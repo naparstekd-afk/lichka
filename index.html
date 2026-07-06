@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Lichka — Gestion des espèces</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1B2A4A">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lichka">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --paper:#F3F1EC;
+  --paper-dark:#E7E3DA;
+  --ink:#1B2A4A;
+  --ink-soft:#6A7280;
+  --line:#E0DCD3;
+  --credit:#2F6B4F;
+  --credit-bg:#E4EFE9;
+  --debit:#9B3B2E;
+  --debit-bg:#F5E5E1;
+  --accent:#B8892B;
+  --white:#FFFFFF;
+  --shadow: 0 2px 8px rgba(43,38,32,0.08);
+  --radius:10px;
+  font-size:16px;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Iowan Old Style","Georgia",serif;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:90px;
+}
+.utility{font-family:"Helvetica Neue",Arial,sans-serif;}
+
+/* ===== TOP HEADER ===== */
+header{
+  position:sticky;top:0;z-index:50;
+  background:var(--ink);
+  color:var(--paper);
+  box-shadow:var(--shadow);
+}
+.nav-inner{
+  max-width:920px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;
+}
+.brand{ display:flex; align-items:center;}
+.brand .mark{ color:var(--accent); font-size:1.1rem; line-height:0;}
+.brand-name{ font-size:0.82rem; font-weight:600; letter-spacing:0.03em; margin-left:6px; color:var(--paper); opacity:0.92;}
+.bh{ font-family:"Iowan Old Style","Georgia",serif; font-size:0.82rem; opacity:0.85; letter-spacing:0.02em; }
+
+.local-banner{
+  background:var(--debit-bg); color:var(--debit); border:1px solid var(--debit);
+  border-radius:8px; padding:10px 14px; font-family:"Helvetica Neue",Arial,sans-serif;
+  font-size:0.82rem; margin-bottom:14px;
+}
+
+/* ===== FAB (menu de navigation en bas) ===== */
+.fab{
+  position:fixed; bottom:20px; right:20px; width:58px; height:58px;
+  border-radius:50%; background:var(--accent); color:var(--ink);
+  font-size:2rem; line-height:1; border:none; cursor:pointer; z-index:160;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 16px rgba(43,38,32,0.30); transition:transform .18s;
+}
+.fab.open{ transform:rotate(45deg); }
+.fab-menu{
+  position:fixed; bottom:88px; right:20px; background:var(--white);
+  border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 26px rgba(43,38,32,0.20);
+  padding:6px; min-width:210px; z-index:160; display:none;
+}
+.fab-menu.open{ display:block; }
+.fab-item{
+  display:block; width:100%; text-align:left; background:none; border:none;
+  font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.98rem; color:var(--ink);
+  padding:13px 14px; border-radius:8px; cursor:pointer;
+}
+.fab-item:hover, .fab-item.active{ background:var(--paper-dark); }
+.fab-item.active{ font-weight:700; }
+
+main{max-width:920px;margin:0 auto;padding:18px 14px 40px;}
+h1.page-title{
+  font-size:1.4rem; margin:6px 0 18px; font-weight:700;
+  border-bottom:2px solid var(--line); padding-bottom:10px;
+}
+.card{
+  background:var(--white); border:1px solid var(--line);
+  border-radius:var(--radius); padding:16px; box-shadow:var(--shadow);
+  margin-bottom:14px;
+}
+.section-label{
+  font-family:"Helvetica Neue",Arial,sans-serif;
+  font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em;
+  color:var(--ink-soft); margin-bottom:8px; font-weight:600;
+}
+
+/* ===== TYPE TOGGLE ===== */
+.type-toggle{display:flex; gap:10px; margin-bottom:16px;}
+.type-btn{
+  flex:1; padding:16px; border-radius:var(--radius); border:2px solid var(--line);
+  font-family:"Helvetica Neue",Arial,sans-serif; font-weight:700; font-size:1rem;
+  background:var(--white); cursor:pointer; text-transform:uppercase; letter-spacing:0.04em;
+  transition:all .12s;
+}
+.type-btn.credit.selected{ background:var(--credit); color:#fff; border-color:var(--credit);}
+.type-btn.debit.selected{ background:var(--debit); color:#fff; border-color:var(--debit);}
+
+/* ===== CHIP GROUPS (themes / subcats) ===== */
+.chip-row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+.chip{
+  font-family:"Helvetica Neue",Arial,sans-serif;
+  padding:9px 14px; border-radius:999px; border:1.5px solid var(--line);
+  background:var(--white); cursor:pointer; font-size:0.88rem; font-weight:500;
+  white-space:nowrap;
+}
+.chip.selected{ background:var(--ink); color:var(--paper); border-color:var(--ink);}
+.chip.add-new{ border-style:dashed; color:var(--ink-soft);}
+
+label.field-label{
+  display:block; font-family:"Helvetica Neue",Arial,sans-serif;
+  font-size:0.75rem; text-transform:uppercase; letter-spacing:0.06em;
+  color:var(--ink-soft); margin:14px 0 6px; font-weight:600;
+}
+input[type=text], input[type=number], input[type=date], input[type=email], input[type=password], select, textarea{
+  width:100%; padding:12px; border:1.5px solid var(--line); border-radius:8px;
+  font-size:1rem; background:var(--paper); font-family:"Helvetica Neue",Arial,sans-serif;
+  color:var(--ink);
+}
+input:focus, select:focus, textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+.amount-input{font-size:1.6rem; font-weight:700; text-align:right; padding:14px;}
+
+.btn{
+  font-family:"Helvetica Neue",Arial,sans-serif; font-weight:700;
+  border:none; border-radius:8px; padding:13px 20px; font-size:0.95rem;
+  cursor:pointer; letter-spacing:0.02em;
+}
+.btn-primary{ background:var(--ink); color:var(--paper); width:100%; margin-top:18px; padding:16px; font-size:1.05rem;}
+.btn-primary:active{ transform:scale(0.99); }
+.btn-ghost{ background:none; border:1.5px solid var(--line); color:var(--ink);}
+.btn-danger{ background:var(--debit-bg); color:var(--debit); border:1px solid var(--debit);}
+.btn-small{ padding:7px 12px; font-size:0.8rem; border-radius:6px;}
+
+/* ===== DASHBOARD ===== */
+.stat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;}
+.stat-grid.two-col{grid-template-columns:repeat(2,1fr);}
+@media (max-width:560px){.stat-grid{grid-template-columns:1fr;} .stat-grid.two-col{grid-template-columns:repeat(2,1fr);}}
+.solde-hero{
+  background:var(--ink); color:var(--paper); border-radius:var(--radius);
+  padding:22px; text-align:center; margin-bottom:12px;
+}
+.solde-hero .l{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.75;}
+.solde-hero .v{font-size:2.1rem; font-weight:700; margin-top:4px; white-space:nowrap;}
+.stat-box{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:14px; text-align:center;}
+.stat-box .v{font-size:1.5rem; font-weight:700; white-space:nowrap;}
+.stat-box .l{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); margin-top:4px;}
+.stat-box.credit .v{color:var(--credit);}
+.stat-box.debit .v{color:var(--debit);}
+.stat-box.solde .v{color:var(--ink);}
+
+table{width:100%; border-collapse:collapse; font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.86rem;}
+th{ text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); padding:8px 6px; border-bottom:2px solid var(--line);}
+td{ padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:middle;}
+td.amt{ white-space:nowrap; }
+tr.row-credit td.amt{color:var(--credit); font-weight:700;}
+tr.row-debit td.amt{color:var(--debit); font-weight:700;}
+td input, td select{ padding:6px 7px; font-size:0.84rem; border-radius:5px;}
+.type-select{ font-weight:700; min-width:88px; border-width:1.5px; cursor:pointer;}
+.type-select.credit{ background:var(--credit-bg); color:var(--credit); border-color:var(--credit);}
+.type-select.debit{ background:var(--debit-bg); color:var(--debit); border-color:var(--debit);}
+.table-wrap{overflow-x:auto;}
+.icon-btn{ background:none;border:none;cursor:pointer; font-size:1rem; padding:4px 6px; color:var(--ink-soft);}
+.icon-btn:hover{color:var(--debit);}
+.clickable-row{cursor:pointer;}
+.clickable-row:hover{background:var(--paper-dark);}
+tr.row-highlight{ animation: rowflash 1.6s ease 2; }
+@keyframes rowflash{ 0%{background:var(--paper-dark);} 50%{background:#F0E2B8;} 100%{background:transparent;} }
+
+/* ===== RESPONSIVE TABLE (mobile cards) ===== */
+@media (max-width:640px){
+  table.resp thead{ display:none; }
+  table.resp, table.resp tbody, table.resp tr, table.resp td{ display:block; width:100%; }
+  table.resp tr{ border:1px solid var(--line); border-radius:10px; margin-bottom:10px; padding:6px 8px; background:var(--white); }
+  table.resp td{ border:none; border-bottom:1px solid var(--paper-dark); padding:8px 4px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  table.resp tr td:last-child{ border-bottom:none; }
+  table.resp td::before{ content:attr(data-label); font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.66rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); flex:0 0 auto; }
+  table.resp td:empty, table.resp td[data-label=""]::before{ content:""; }
+  table.resp td input, table.resp td select{ flex:1 1 auto; min-width:0 !important; width:auto; text-align:right; }
+}
+
+.empty{ text-align:center; color:var(--ink-soft); padding:30px 10px; font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.9rem;}
+
+.search-bar{ display:flex; gap:8px; margin-bottom:14px;}
+.search-bar input{flex:1;}
+
+.theme-stat-card{ display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; cursor:pointer; background:var(--white);}
+.theme-stat-card:hover{border-color:var(--accent);}
+.theme-stat-card .name{font-weight:700;}
+.theme-stat-card .nums{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.82rem; text-align:right; white-space:nowrap;}
+.theme-stat-card .nums .c{color:var(--credit);} .theme-stat-card .nums .d{color:var(--debit);}
+
+.filters{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+.filters select, .filters input{width:auto; flex:1; min-width:110px;}
+
+.person-list-item{ display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.9rem; gap:10px;}
+.person-list-item:hover{background:var(--paper-dark);}
+.person-list-item .amt-c{color:var(--credit); font-weight:700; white-space:nowrap;}
+.person-list-item .amt-d{color:var(--debit); font-weight:700; white-space:nowrap;}
+.res-date{ display:block; font-size:0.72rem; color:var(--ink-soft); margin-bottom:2px; }
+
+/* projection prévisionnel */
+.proj{display:flex; flex-wrap:wrap; align-items:center; gap:5px;}
+.proj-step{font-weight:700; white-space:nowrap;}
+.proj-step.neg{color:var(--debit);}
+.proj-arrow{color:var(--ink-soft);}
+
+/* ===== HISTORIQUE : tableau (ordi) -> cartes (mobile) ===== */
+.hist-cards{ display:none; }
+@media (max-width:640px){
+  .hist-table-wrap{ display:none; }
+  .hist-cards{ display:block; }
+}
+.hist-card{
+  background:var(--white); border:1px solid var(--line); border-radius:12px;
+  padding:13px 15px; margin-bottom:10px; box-shadow:var(--shadow); cursor:pointer;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+.hist-card:active{ background:var(--paper-dark); }
+.hist-card .title{ font-weight:700; color:var(--accent); font-size:1rem; }
+.hist-card .sub{ font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.8rem; color:var(--ink-soft); margin-top:3px; }
+.hist-card .right{ display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+.hist-card .chev{ color:var(--ink-soft); font-size:1.3rem; line-height:1; }
+
+/* ===== Prévisionnel : flèches de navigation mois ===== */
+.pv-arrow{ background:none; border:1px solid var(--line); border-radius:6px; width:26px; height:26px; cursor:pointer; color:var(--ink); font-size:1.1rem; line-height:1; }
+.pv-arrow:hover{ background:var(--paper-dark); }
+.pv-month-label{ min-width:120px; text-align:center; display:inline-block; }
+.drag-handle{ cursor:grab; color:var(--ink-soft); font-size:1.15rem; line-height:1; touch-action:none; user-select:none; padding:2px 6px 2px 0; flex:0 0 auto; }
+.drag-handle:active{ cursor:grabbing; }
+.tsc-body{ flex:1; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.theme-stat-card.dragging{ opacity:.55; background:var(--paper-dark); }
+.clearable{ position:relative; }
+.clearable input{ padding-right:38px; }
+.clear-x{ position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--ink-soft); font-size:1rem; padding:6px; display:none; }
+.clearable.has-text .clear-x{ display:block; }
+.search-summary{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.8rem; }
+.search-summary .pill{ padding:6px 11px; border-radius:999px; font-weight:600; white-space:nowrap; }
+.ss-count{ background:var(--paper-dark); color:var(--ink); }
+.ss-c{ background:var(--credit-bg); color:var(--credit); }
+.ss-d{ background:var(--debit-bg); color:var(--debit); }
+.ss-s{ background:var(--ink); color:var(--paper); }
+.seg{ display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.seg-btn{ background:var(--white); border:none; padding:8px 14px; font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.85rem; cursor:pointer; color:var(--ink); }
+.seg-btn.active{ background:var(--ink); color:var(--paper); }
+.seg-btn + .seg-btn{ border-left:1px solid var(--line); }
+.theme-stat-card{ display:block; }
+.sc-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.sc-chev{ color:var(--ink-soft); font-size:1.2rem; line-height:1; transition:transform .15s; flex:0 0 auto; }
+.theme-stat-card.sc-open .sc-chev{ transform:rotate(90deg); }
+.sc-sub{ margin-top:10px; border-top:1px solid var(--line); padding-top:6px; }
+.sc-sub-row{ display:flex; justify-content:space-between; align-items:center; padding:7px 4px 7px 22px; font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.82rem; cursor:pointer; border-radius:6px; }
+.sc-sub-row:hover{ background:var(--paper-dark); }
+.sc-sub-row .s-solde{ font-weight:700; white-space:nowrap; }
+.sc-sub-head{ font-weight:600; }
+.sc-chev2{ color:var(--ink-soft); font-size:1rem; line-height:1; transition:transform .15s; display:inline-block; }
+.sc-lvl2.sc-open .sc-chev2{ transform:rotate(90deg); }
+.sc-sub2{ border-top:1px dashed var(--line); margin-top:2px; margin-bottom:4px; }
+.sc-sub-row3{ padding-left:40px; font-weight:400; }
+.pv-month-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+.pv-month-title{ font-weight:700; font-size:1.05rem; text-transform:capitalize; }
+.pv-month-end{ font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.82rem; color:var(--ink-soft); }
+.pv-tag{ background:var(--accent); color:#fff; font-size:0.6rem; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:999px; margin-left:4px; vertical-align:middle; }
+.pv-tag.reel{ background:var(--ink); }
+.pv-month-net{ font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.85rem; margin:8px 0 4px; }
+.pv-acc-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; }
+.pv-chev{ color:var(--ink-soft); font-size:1.3rem; line-height:1; transition:transform .15s; display:inline-block; }
+.pv-month-card.pv-open .pv-chev{ transform:rotate(90deg); }
+.pv-body{ margin-top:12px; border-top:1px solid var(--line); padding-top:12px; }
+
+.toast{
+  position:fixed; bottom:18px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--ink); color:var(--paper); padding:11px 20px; border-radius:8px;
+  font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.85rem; opacity:0; transition:all .25s;
+  pointer-events:none; z-index:200; box-shadow:var(--shadow);
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+.settings-group{margin-bottom:24px;}
+.settings-group h3{font-size:1rem; margin-bottom:10px; border-bottom:1px solid var(--line); padding-bottom:6px;}
+.kv-row{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+.kv-row .lbl{flex:1; font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.9rem;}
+
+.modal-overlay{ position:fixed; inset:0; background:rgba(43,38,32,0.55); display:none; align-items:flex-end; justify-content:center; z-index:300;}
+.modal-overlay.show{display:flex;}
+.modal{ background:var(--paper); width:100%; max-width:520px; border-radius:16px 16px 0 0; padding:20px; max-height:85vh; overflow-y:auto;}
+@media (min-width:640px){ .modal-overlay{align-items:center;} .modal{border-radius:14px;} }
+.modal h2{margin-top:0;}
+.modal-actions{display:flex; gap:10px; margin-top:18px;}
+.modal-actions .btn{flex:1;}
+
+a.file-link{ display:inline-block; margin-top:6px; font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.85rem; color:var(--accent);}
+.hint{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.78rem; color:var(--ink-soft); margin-top:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-inner">
+    <div class="brand"><span class="mark">⎙</span><span class="brand-name">Lichka</span></div>
+    <div class="bh" title="בעזרת השם">ב״ה</div>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<!-- Menu de navigation en bas (bouton rond +) -->
+<button class="fab" id="fab" aria-label="Menu de navigation">+</button>
+<div class="fab-menu" id="fabMenu">
+  <button class="fab-item" data-page="nouvelle">Opération</button>
+  <button class="fab-item" data-page="stats">Solde</button>
+  <button class="fab-item" data-page="historique">Historique</button>
+  <button class="fab-item" data-page="previsionnel">Prévisionnel</button>
+  <button class="fab-item" data-page="parametres">Paramètres</button>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalBody"></div></div>
+
+<script>
+/* ============ AUTH — accès par email + code ============ */
+const ACCESS_EMAIL = 'naparstekd@gmail.com';
+const ACCESS_CODE  = 'Salut123.';
+const AUTH_KEY     = 'lichka_auth_ok_v1';
+
+/* ============ DATA LAYER — Google Sheet via Apps Script ============ */
+const WEBAPP_URL_DEFAULT = 'https://script.google.com/a/macros/habadmontgolfier.com/s/AKfycbwrcwTmyJ1HM8KgCrRREvpELu-_OyBa0zDGo2BWMuJGqXQc_fxXMQcyOT-HK6121wlhhw/exec'; // injecté au déploiement
+const WEBAPP_KEY = 'lichka_webapp_url_v1';
+const LOCAL_FALLBACK_KEY = 'lichka_local_fallback_v1';
+
+function getWebAppUrl(){
+  const stored = localStorage.getItem(WEBAPP_KEY);
+  if(stored) return stored;
+  return WEBAPP_URL_DEFAULT.indexOf('__WEBAPP') === -1 ? WEBAPP_URL_DEFAULT : '';
+}
+function setWebAppUrl(u){ if(u) localStorage.setItem(WEBAPP_KEY, u); else localStorage.removeItem(WEBAPP_KEY); }
+
+const DEFAULT_THEMES = {
+  "Club Cacher": {
+    credit: ["Inscription","Don","Autre"],
+    debit: ["Animatrice","Matériel","Divers"]
+  },
+  "Talmud Torah": {
+    credit: ["Inscription","Don","Autre"],
+    debit: ["Enseignant","Matériel","Divers"]
+  },
+  "Vérification M/T": {
+    credit: ["Client"],
+    debit: ["Sofer"]
+  }
+};
+
+function defaultData(){
+  return {
+    themes: JSON.parse(JSON.stringify(DEFAULT_THEMES)),
+    operations: [], // {id, date, type, compte, theme, subcat, desc, amount}
+    comptes: ["Beth Habad","Hazak","Famille"],
+    forecast: { months:{} } // prévisionnel : { "YYYY-MM": { theme: montant } }
+  };
+}
+
+// Normalise un objet de données (garantit themes/operations/forecast)
+function normalizeData(p){
+  if(!p || typeof p!=='object') p = defaultData();
+  if(!p.themes) p.themes = JSON.parse(JSON.stringify(DEFAULT_THEMES));
+  if(!p.operations) p.operations = [];
+  if(!Array.isArray(p.comptes) || !p.comptes.length) p.comptes = ["Beth Habad","Hazak","Famille"];
+  if(!p.forecast) p.forecast = { months:{} };
+  if(!p.forecast.months || typeof p.forecast.months!=='object') p.forecast.months = {};
+  Object.keys(p.forecast.months).forEach(function(mk){
+    var mo = p.forecast.months[mk] || {};
+    Object.keys(mo).forEach(function(th){
+      var v = mo[th];
+      if(typeof v === 'number') mo[th] = { debit:v, credit:0 };
+      else if(v && typeof v==='object') mo[th] = { debit:Number(v.debit)||0, credit:Number(v.credit)||0 };
+      else mo[th] = { debit:0, credit:0 };
+    });
+    p.forecast.months[mk] = mo;
+  });
+  return p;
+}
+
+let SYNC_MODE = 'local'; // 'sheet' | 'local'
+
+function jsonp(url, timeoutMs){
+  return new Promise(function(resolve, reject){
+    var cb = 'lk_cb_' + Math.random().toString(36).slice(2);
+    var s = document.createElement('script');
+    var done = false;
+    function cleanup(){ try{ delete window[cb]; }catch(e){ window[cb] = undefined; } if(s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data){ done = true; cleanup(); resolve(data); };
+    s.onerror = function(){ if(!done){ cleanup(); reject(new Error('jsonp error')); } };
+    s.src = url + (url.indexOf('?')===-1 ? '?' : '&') + 'callback=' + cb;
+    document.head.appendChild(s);
+    setTimeout(function(){ if(!done){ cleanup(); reject(new Error('jsonp timeout')); } }, timeoutMs || 15000);
+  });
+}
+
+async function loadData(){
+  const url = getWebAppUrl();
+  if(url){
+    try{
+      const json = await jsonp(url + '?action=load&code=' + encodeURIComponent(ACCESS_CODE));
+      if(json && json.ok){
+        SYNC_MODE = 'sheet';
+        let parsed = normalizeData(json.payload ? JSON.parse(json.payload) : defaultData());
+        try{ localStorage.setItem(LOCAL_FALLBACK_KEY, JSON.stringify(parsed)); }catch(e){}
+        return parsed;
+      }
+      throw new Error('réponse invalide');
+    }catch(e){
+      console.error('Connexion au Google Sheet impossible', e);
+      toast('⚠ Connexion à la base impossible — mode local activé');
+      SYNC_MODE = 'local';
+    }
+  } else {
+    SYNC_MODE = 'local';
+  }
+  // Repli local (pas de synchronisation entre appareils)
+  try{
+    const raw = localStorage.getItem(LOCAL_FALLBACK_KEY);
+    if(raw){ return normalizeData(JSON.parse(raw)); }
+  }catch(e){}
+  const fresh = defaultData();
+  localStorage.setItem(LOCAL_FALLBACK_KEY, JSON.stringify(fresh));
+  return fresh;
+}
+
+async function saveData(d){
+  try{ localStorage.setItem(LOCAL_FALLBACK_KEY, JSON.stringify(d)); }catch(e){}
+  if(SYNC_MODE === 'sheet' && getWebAppUrl()){
+    setSyncStatus('syncing');
+    try{
+      await fetch(getWebAppUrl(), {
+        method: 'POST',
+        mode: 'no-cors',
+        credentials: 'include',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ code: ACCESS_CODE, payload: JSON.stringify(d) })
+      });
+      setSyncStatus('ok');
+      return;
+    }catch(e){
+      console.error('Erreur de sauvegarde', e);
+      setSyncStatus('error');
+      toast('⚠ Sauvegarde impossible — vérifie ta connexion internet');
+      return;
+    }
+  }
+  setSyncStatus('local');
+}
+
+function isUserBusy(){
+  if(document.getElementById('modalOverlay')?.classList.contains('show')) return true;
+  const el = document.activeElement;
+  return !!(el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName));
+}
+
+function setSyncStatus(state){
+  const dot = document.getElementById('syncDot');
+  if(!dot) return;
+  dot.className = 'sync-dot ' + state;
+}
+
+let _pollTimer = null;
+function startSyncPolling(){
+  if(SYNC_MODE !== 'sheet' || !getWebAppUrl()) return;
+  if(_pollTimer) clearInterval(_pollTimer);
+  _pollTimer = setInterval(async ()=>{
+    if(isUserBusy()) return;
+    try{
+      const json = await jsonp(getWebAppUrl() + '?action=load&code=' + encodeURIComponent(ACCESS_CODE));
+      if(json && json.ok){
+        const fresh = normalizeData(json.payload ? JSON.parse(json.payload) : defaultData());
+        if(JSON.stringify(fresh) !== JSON.stringify(DATA)){
+          DATA = fresh;
+          render();
+        }
+        setSyncStatus('ok');
+      }
+    }catch(e){
+      setSyncStatus('error');
+    }
+  }, 8000);
+}
+
+let DATA = defaultData();
+
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtMoney(n){
+  const v = Number(n)||0;
+  // espace insécable avant € pour éviter le retour à la ligne
+  return v.toLocaleString('fr-FR',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
+function fmtDate(iso){
+  if(!iso) return '';
+  const [y,m,d]=iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._tm);
+  toast._tm = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ============ ROUTER + MENU BAS (FAB) ============ */
+let CURRENT_PAGE = 'nouvelle'; // page d'accueil = Opération
+const app = document.getElementById('app');
+
+function setActiveNav(page){
+  document.querySelectorAll('.fab-item').forEach(b=>{
+    b.classList.toggle('active', b.dataset.page===page);
+  });
+}
+function navigate(page, fromPop){
+  CURRENT_PAGE = page;
+  setActiveNav(page);
+  closeFab();
+  render();
+  window.scrollTo({top:0,behavior:'instant'});
+  if(!fromPop){
+    try{ history.pushState({page:page}, '', ''); }catch(e){}
+  }
+}
+
+const fab = document.getElementById('fab');
+const fabMenu = document.getElementById('fabMenu');
+function openFab(){ fabMenu.classList.add('open'); fab.classList.add('open'); }
+function closeFab(){ fabMenu.classList.remove('open'); fab.classList.remove('open'); }
+function toggleFab(){ fabMenu.classList.contains('open') ? closeFab() : openFab(); }
+
+fab.addEventListener('click', e=>{ e.stopPropagation(); toggleFab(); });
+fabMenu.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-page]');
+  if(btn) navigate(btn.dataset.page); // navigate ferme aussi le menu
+});
+// Se referme si l'utilisateur clique n'importe où sur l'écran
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#fab') && !e.target.closest('#fabMenu')) closeFab();
+});
+
+// Bouton "retour" du téléphone : revenir à la page précédente dans l'app
+window.addEventListener('popstate', function(e){
+  const overlay = document.getElementById('modalOverlay');
+  if(overlay && overlay.classList.contains('show')){
+    closeModal();
+    try{ history.pushState({page:CURRENT_PAGE}, '', ''); }catch(err){}
+    return;
+  }
+  closeFab();
+  const page = (e.state && e.state.page) ? e.state.page : 'nouvelle';
+  navigate(page, true);
+});
+
+function render(){
+  if(CURRENT_PAGE==='nouvelle') renderNouvelle();
+  else if(CURRENT_PAGE==='historique') renderHistorique();
+  else if(CURRENT_PAGE==='stats') renderStats();
+  else if(CURRENT_PAGE==='previsionnel') renderPrevisionnel();
+  else if(CURRENT_PAGE==='parametres') renderParametres();
+  if(SYNC_MODE==='local'){
+    app.insertAdjacentHTML('afterbegin', `<div class="local-banner">⚠ Synchronisation non activée : les données restent uniquement sur cet appareil. Va dans <strong>Paramètres</strong> pour connecter la synchronisation entre appareils.</div>`);
+  }
+}
+
+/* ============ MODAL HELPERS ============ */
+function openModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+document.getElementById('modalOverlay').addEventListener('click', e=>{
+  if(e.target.id==='modalOverlay') closeModal();
+});
+
+/* ============ PAGE: OPÉRATION ============ */
+let formState = { type:'credit', theme:null, compte:null, subcat:null, desc:'', amount:'', date: todayISO() };
+
+function renderNouvelle(){
+  const themeNames = Object.keys(DATA.themes);
+  if(!formState.compte && DATA.comptes && DATA.comptes.length) formState.compte = DATA.comptes[0];
+  let subcats = [];
+  if(formState.theme && DATA.themes[formState.theme]){
+    subcats = DATA.themes[formState.theme][formState.type] || [];
+  }
+
+  app.innerHTML = `
+    <h1 class="page-title">Opération</h1>
+    <div class="card">
+      <div class="section-label">Type d'opération</div>
+      <div class="type-toggle">
+        <button class="type-btn credit ${formState.type==='credit'?'selected':''}" id="btnCredit">+ Crédit</button>
+        <button class="type-btn debit ${formState.type==='debit'?'selected':''}" id="btnDebit">− Débit</button>
+      </div>
+
+      <div class="section-label">Compte</div>
+      <div class="chip-row" id="compteRow">
+        ${(DATA.comptes||[]).map(c=>`<button class="chip ${formState.compte===c?'selected':''}" data-compte="${escAttr(c)}">${escHtml(c)}</button>`).join('')}
+        <button class="chip add-new" id="addCompteChip">+ Autre compte</button>
+      </div>
+
+      <div class="section-label">Thème</div>
+      <div class="chip-row" id="themeRow">
+        ${themeNames.map(t=>`<button class="chip ${formState.theme===t?'selected':''}" data-theme="${escAttr(t)}">${escHtml(t)}</button>`).join('')}
+        <button class="chip add-new" id="addThemeChip">+ Autre thème</button>
+      </div>
+
+      ${formState.theme ? `
+      <div class="section-label">Sous-catégorie (${formState.type==='credit'?'crédit':'débit'})</div>
+      <div class="chip-row" id="subcatRow">
+        ${subcats.map(s=>`<button class="chip ${formState.subcat===s?'selected':''}" data-subcat="${escAttr(s)}">${escHtml(s)}</button>`).join('')}
+        <button class="chip add-new" id="addSubcatChip">+ Autre</button>
+      </div>` : ''}
+
+      <label class="field-label" for="descField">Champ libre — nom, description, commentaire...</label>
+      <input type="text" id="descField" placeholder="Ex : Sarah Cohen — achat de jeux" value="${escAttr(formState.desc)}">
+
+      <label class="field-label" for="amountField">Montant</label>
+      <input type="number" inputmode="decimal" step="0.01" class="amount-input" id="amountField" placeholder="0,00" value="${escAttr(formState.amount)}">
+
+      <label class="field-label" for="dateField">Date</label>
+      <input type="date" id="dateField" value="${formState.date}">
+
+      <button class="btn btn-primary" id="saveOpBtn">✓ Enregistrer</button>
+    </div>
+  `;
+
+  document.getElementById('btnCredit').onclick = ()=>{ formState.type='credit'; formState.subcat=null; renderNouvelle(); };
+  document.getElementById('btnDebit').onclick = ()=>{ formState.type='debit'; formState.subcat=null; renderNouvelle(); };
+
+  document.getElementById('themeRow').addEventListener('click', e=>{
+    const chip = e.target.closest('.chip[data-theme]');
+    if(chip){
+      formState.theme = chip.dataset.theme;
+      formState.subcat = null;
+      renderNouvelle();
+    }
+  });
+  document.getElementById('addThemeChip').onclick = ()=>{
+    promptText('Nouveau thème', 'Nom du thème', (val)=>{
+      if(!val) return;
+      if(!DATA.themes[val]) DATA.themes[val] = {credit:[], debit:[]};
+      saveData(DATA);
+      formState.theme = val;
+      formState.subcat = null;
+      renderNouvelle();
+    });
+  };
+
+  const subcatRow = document.getElementById('subcatRow');
+  if(subcatRow){
+    subcatRow.addEventListener('click', e=>{
+      const chip = e.target.closest('.chip[data-subcat]');
+      if(chip){ formState.subcat = chip.dataset.subcat; renderNouvelle(); }
+    });
+    document.getElementById('addSubcatChip').onclick = ()=>{
+      promptText('Nouvelle sous-catégorie', 'Nom de la sous-catégorie', (val)=>{
+        if(!val) return;
+        const arr = DATA.themes[formState.theme][formState.type] || (DATA.themes[formState.theme][formState.type]=[]);
+        if(!arr.includes(val)) arr.push(val);
+        saveData(DATA);
+        formState.subcat = val;
+        renderNouvelle();
+      });
+    };
+  }
+
+  document.getElementById('compteRow').addEventListener('click', e=>{
+    const chip = e.target.closest('.chip[data-compte]');
+    if(chip){ formState.compte = chip.dataset.compte; renderNouvelle(); }
+  });
+  document.getElementById('addCompteChip').onclick = ()=>{
+    promptText('Nouveau compte', 'Nom du compte', (val)=>{
+      if(!val) return;
+      if(!DATA.comptes.includes(val)) DATA.comptes.push(val);
+      saveData(DATA);
+      formState.compte = val;
+      renderNouvelle();
+    });
+  };
+  document.getElementById('descField').oninput = e=> formState.desc = e.target.value;
+  document.getElementById('amountField').oninput = e=> formState.amount = e.target.value;
+  document.getElementById('dateField').oninput = e=> formState.date = e.target.value;
+
+  document.getElementById('saveOpBtn').onclick = ()=>{
+    const op = {
+      id: uid(),
+      date: formState.date || todayISO(),
+      type: formState.type,
+      theme: formState.theme || '',
+      compte: formState.compte || '',
+      subcat: formState.subcat || '',
+      desc: formState.desc || '',
+      amount: parseFloat(formState.amount) || 0
+    };
+    DATA.operations.unshift(op);
+    saveData(DATA);
+    toast('Opération enregistrée ✓');
+    formState = { type: formState.type, theme: formState.theme, compte: formState.compte, subcat: null, desc:'', amount:'', date: todayISO() };
+    renderNouvelle();
+  };
+}
+
+function promptText(title, label, cb){
+  openModal(`
+    <h2>${escHtml(title)}</h2>
+    <label class="field-label">${escHtml(label)}</label>
+    <input type="text" id="promptInput" autofocus>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="promptCancel">Annuler</button>
+      <button class="btn btn-primary" id="promptOk" style="margin-top:0">Valider</button>
+    </div>
+  `);
+  document.getElementById('promptCancel').onclick = closeModal;
+  document.getElementById('promptOk').onclick = ()=>{
+    const v = document.getElementById('promptInput').value.trim();
+    closeModal();
+    cb(v);
+  };
+  document.getElementById('promptInput').addEventListener('keydown', e=>{
+    if(e.key==='Enter') document.getElementById('promptOk').click();
+  });
+  setTimeout(()=>document.getElementById('promptInput')?.focus(), 50);
+}
+
+/* ============ PAGE: HISTORIQUE ============ */
+let historySearch = '';
+let histThemeFilter = '';
+let histDateFrom = '';
+let histDateTo = '';
+let pendingHighlightId = null;
+
+function renderHistorique(){
+  const isFiltering = !!(historySearch || histThemeFilter || histDateFrom || histDateTo);
+  const ops = DATA.operations
+    .slice()
+    .sort((a,b)=> b.date.localeCompare(a.date))
+    .filter(matchesSearch)
+    .filter(matchesHistFilters);
+
+  const histTotals = computeTotals(ops);
+  const opThemes = Array.from(new Set(DATA.operations.map(o=>o.theme||''))).filter(t=>t!=='').sort();
+
+  app.innerHTML = `
+    <h1 class="page-title">Historique</h1>
+    <div class="clearable ${historySearch?'has-text':''}" style="margin-bottom:14px;">
+      <input type="text" id="searchInput" placeholder="Rechercher (nom, montant, thème...)" value="${escAttr(historySearch)}">
+      <button class="clear-x" id="histClear" aria-label="Effacer la recherche">✕</button>
+    </div>
+    <div class="filters">
+      <select id="histTheme">
+        <option value="">Tous les thèmes</option>
+        ${opThemes.map(t=>`<option value="${escAttr(t)}" ${histThemeFilter===t?'selected':''}>${escHtml(t)}</option>`).join('')}
+      </select>
+      <input type="date" id="histFrom" value="${histDateFrom}" aria-label="Date de début">
+      <input type="date" id="histTo" value="${histDateTo}" aria-label="Date de fin">
+      ${isFiltering ? `<button class="btn btn-ghost btn-small" id="histResetFilters" style="flex:0 0 auto;">Réinitialiser</button>` : ''}
+    </div>
+    ${isFiltering ? `<div class="search-summary">
+      <span class="pill ss-count">${ops.length} résultat${ops.length>1?'s':''}</span>
+      <span class="pill ss-c">Crédit ${fmtMoney(histTotals.credit)}</span>
+      <span class="pill ss-d">Débit ${fmtMoney(histTotals.debit)}</span>
+      <span class="pill ss-s">Solde ${fmtMoney(histTotals.solde)}</span>
+    </div>` : ''}
+    ${ops.length===0 ? `<div class="card"><div class="empty">Aucune opération trouvée.</div></div>` : `
+    <div class="card hist-table-wrap table-wrap">
+      <datalist id="histCompteList">${(DATA.comptes||[]).map(c=>`<option value="${escAttr(c)}"></option>`).join('')}</datalist>
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Type</th><th>Compte</th><th>Thème</th><th>Sous-cat.</th><th>Description</th><th>Montant</th><th></th>
+        </tr></thead>
+        <tbody id="histBody">
+          ${ops.map(op=>rowHtml(op)).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="hist-cards">
+      ${ops.map(op=>histCardHtml(op)).join('')}
+    </div>`}
+  `;
+
+  document.getElementById('searchInput').oninput = e=>{
+    historySearch = e.target.value;
+    renderHistorique();
+    document.getElementById('searchInput').focus();
+    const v = document.getElementById('searchInput');
+    v.selectionStart = v.selectionEnd = v.value.length;
+  };
+  const histClearBtn = document.getElementById('histClear');
+  if(histClearBtn) histClearBtn.onclick = ()=>{ historySearch=''; renderHistorique(); };
+  const htSel = document.getElementById('histTheme');
+  if(htSel) htSel.onchange = e=>{ histThemeFilter = e.target.value; renderHistorique(); };
+  const hFrom = document.getElementById('histFrom');
+  if(hFrom) hFrom.onchange = e=>{ histDateFrom = e.target.value; renderHistorique(); };
+  const hTo = document.getElementById('histTo');
+  if(hTo) hTo.onchange = e=>{ histDateTo = e.target.value; renderHistorique(); };
+  const hReset = document.getElementById('histResetFilters');
+  if(hReset) hReset.onclick = ()=>{ histThemeFilter=''; histDateFrom=''; histDateTo=''; historySearch=''; renderHistorique(); };
+
+  const body = document.getElementById('histBody');
+  if(body){
+    body.addEventListener('change', e=>{
+      const tr = e.target.closest('tr');
+      const id = tr.dataset.id;
+      const op = DATA.operations.find(o=>o.id===id);
+      if(!op) return;
+      const field = e.target.dataset.field;
+      if(field==='amount') op.amount = parseFloat(e.target.value)||0;
+      else if(field==='type'){ op.type = e.target.value; }
+      else op[field] = e.target.value;
+      saveData(DATA);
+      renderHistorique();
+    });
+    body.addEventListener('click', e=>{
+      const del = e.target.closest('.icon-btn[data-del]');
+      if(del){
+        const id = del.closest('tr').dataset.id;
+        if(confirm('Supprimer cette opération ?')){
+          DATA.operations = DATA.operations.filter(o=>o.id!==id);
+          saveData(DATA);
+          renderHistorique();
+        }
+      }
+    });
+  }
+
+  document.querySelectorAll('.hist-card').forEach(c=>{
+    c.onclick = ()=> openHistEdit(c.dataset.id);
+  });
+
+  if(pendingHighlightId){
+    const id = pendingHighlightId;
+    pendingHighlightId = null;
+    setTimeout(()=>{
+      const row = document.querySelector(`tr[data-id="${id}"]`);
+      if(row){
+        row.scrollIntoView({behavior:'smooth', block:'center'});
+        row.classList.add('row-highlight');
+        const amountInput = row.querySelector('[data-field="amount"]');
+        if(amountInput) amountInput.focus();
+      }
+    }, 60);
+  }
+}
+
+function matchesSearch(op){
+  if(!historySearch) return true;
+  const q = historySearch.toLowerCase();
+  return [op.date, op.type, op.theme, op.subcat, op.desc, String(op.amount)]
+    .some(v=> String(v||'').toLowerCase().includes(q));
+}
+
+function matchesHistFilters(op){
+  if(histThemeFilter && (op.theme||'') !== histThemeFilter) return false;
+  if(histDateFrom && (op.date||'') < histDateFrom) return false;
+  if(histDateTo && (op.date||'') > histDateTo) return false;
+  return true;
+}
+
+function rowHtml(op){
+  return `<tr class="row-${op.type}" data-id="${op.id}">
+    <td data-label="Date"><input type="date" value="${op.date}" data-field="date"></td>
+    <td data-label="Type">
+      <select data-field="type" class="type-select ${op.type}">
+        <option value="credit" ${op.type==='credit'?'selected':''}>Crédit</option>
+        <option value="debit" ${op.type==='debit'?'selected':''}>Débit</option>
+      </select>
+    </td>
+    <td data-label="Compte"><input type="text" list="histCompteList" value="${escAttr(op.compte)}" data-field="compte" style="min-width:90px"></td>
+    <td data-label="Thème"><input type="text" value="${escAttr(op.theme)}" data-field="theme" style="min-width:90px"></td>
+    <td data-label="Sous-cat."><input type="text" value="${escAttr(op.subcat)}" data-field="subcat" style="min-width:90px"></td>
+    <td data-label="Description"><input type="text" value="${escAttr(op.desc)}" data-field="desc" style="min-width:130px"></td>
+    <td data-label="Montant" class="amt"><input type="number" step="0.01" value="${op.amount}" data-field="amount" style="min-width:80px;text-align:right"></td>
+    <td data-label=""><button class="icon-btn" data-del title="Supprimer">✕</button></td>
+  </tr>`;
+}
+
+// Carte mobile (style "portable") pour une opération
+function histCardHtml(op){
+  const sign = op.type==='credit' ? '+' : '−';
+  const title = escHtml(op.desc) || escHtml(op.theme) || '(sans description)';
+  const sub = `${fmtDate(op.date)} · ${escHtml(op.compte)||'—'} · ${escHtml(op.theme)||'sans thème'}${op.subcat ? ' · '+escHtml(op.subcat) : ''}`;
+  return `<div class="hist-card" data-id="${op.id}">
+    <div class="hc-main">
+      <div class="title">${title}</div>
+      <div class="sub">${sub}</div>
+    </div>
+    <div class="right">
+      <span class="${op.type==='credit'?'amt-c':'amt-d'}">${sign}${fmtMoney(op.amount)}</span>
+      <span class="chev">›</span>
+    </div>
+  </div>`;
+}
+
+// Fiche d'édition d'une opération (ouverte au clic sur une carte mobile)
+function openHistEdit(id){
+  const op = DATA.operations.find(o=>o.id===id);
+  if(!op) return;
+  const themeOpts = Object.keys(DATA.themes);
+  openModal(`
+    <h2>Modifier l'opération</h2>
+    <div class="section-label">Type</div>
+    <div class="type-toggle" style="margin-bottom:6px;">
+      <button class="type-btn credit ${op.type==='credit'?'selected':''}" id="ehCredit">+ Crédit</button>
+      <button class="type-btn debit ${op.type==='debit'?'selected':''}" id="ehDebit">− Débit</button>
+    </div>
+    <label class="field-label" for="ehDate">Date</label>
+    <input type="date" id="ehDate" value="${op.date}">
+    <label class="field-label" for="ehTheme">Thème</label>
+    <input type="text" id="ehTheme" list="ehThemeList" value="${escAttr(op.theme)}">
+    <datalist id="ehThemeList">${themeOpts.map(t=>`<option value="${escAttr(t)}"></option>`).join('')}</datalist>
+    <label class="field-label" for="ehCompte">Compte</label>
+    <input type="text" id="ehCompte" list="ehCompteList" value="${escAttr(op.compte||'')}">
+    <datalist id="ehCompteList">${(DATA.comptes||[]).map(c=>`<option value="${escAttr(c)}"></option>`).join('')}</datalist>
+    <label class="field-label" for="ehSub">Sous-catégorie</label>
+    <input type="text" id="ehSub" value="${escAttr(op.subcat)}">
+    <label class="field-label" for="ehDesc">Description</label>
+    <input type="text" id="ehDesc" value="${escAttr(op.desc)}">
+    <label class="field-label" for="ehAmt">Montant</label>
+    <input type="number" step="0.01" class="amount-input" id="ehAmt" value="${op.amount}">
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="ehDel">🗑 Supprimer</button>
+      <button class="btn btn-primary" style="margin-top:0" id="ehSave">✓ Enregistrer</button>
+    </div>
+  `);
+  let curType = op.type;
+  document.getElementById('ehCredit').onclick = ()=>{ curType='credit'; document.getElementById('ehCredit').classList.add('selected'); document.getElementById('ehDebit').classList.remove('selected'); };
+  document.getElementById('ehDebit').onclick = ()=>{ curType='debit'; document.getElementById('ehDebit').classList.add('selected'); document.getElementById('ehCredit').classList.remove('selected'); };
+  document.getElementById('ehSave').onclick = ()=>{
+    op.date = document.getElementById('ehDate').value || todayISO();
+    op.type = curType;
+    op.theme = document.getElementById('ehTheme').value;
+    op.compte = document.getElementById('ehCompte').value;
+    op.subcat = document.getElementById('ehSub').value;
+    op.desc = document.getElementById('ehDesc').value;
+    op.amount = parseFloat(document.getElementById('ehAmt').value)||0;
+    saveData(DATA);
+    closeModal();
+    toast('Opération modifiée ✓');
+    render();
+  };
+  document.getElementById('ehDel').onclick = ()=>{
+    if(confirm('Supprimer cette opération ?')){
+      DATA.operations = DATA.operations.filter(o=>o.id!==id);
+      saveData(DATA);
+      closeModal();
+      render();
+    }
+  };
+}
+
+/* ============ PAGE: SOLDE (ex-Statistiques) ============ */
+let statsPersonQuery = '';
+let statsDateFilter = 'all';
+let statsThemeMode = 'month'; // 'month' | 'all'
+let statsThemeMonth = null;
+let statsGroupBy = 'theme'; // 'theme' | 'compte'
+let statsExpanded = {}; // cartes dépliées (croisement thème/compte)
+
+function computeTotals(ops){
+  let credit=0, debit=0;
+  ops.forEach(o=>{ if(o.type==='credit') credit+=Number(o.amount)||0; else debit+=Number(o.amount)||0; });
+  return {credit, debit, solde: credit-debit};
+}
+
+function filterByDate(ops, mode){
+  if(mode==='all') return ops;
+  const now = new Date();
+  return ops.filter(o=>{
+    const d = new Date(o.date);
+    if(mode==='day') return o.date===todayISO();
+    if(mode==='month') return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    if(mode==='year') return d.getFullYear()===now.getFullYear();
+    return true;
+  });
+}
+
+let THEME_DRAG_TS = 0;
+function enableThemeDragSort(container){
+  if(!container) return;
+  let dragging=null;
+  container.querySelectorAll('.theme-stat-card').forEach(card=>{
+    const handle=card.querySelector('.drag-handle');
+    if(!handle) return;
+    handle.addEventListener('pointerdown', e=>{
+      e.preventDefault();
+      dragging=card; let moved=false;
+      card.classList.add('dragging');
+      const onMove=ev=>{
+        moved=true;
+        const y=ev.clientY;
+        const others=Array.prototype.slice.call(container.querySelectorAll('.theme-stat-card:not(.dragging)'));
+        let ref=null;
+        for(const sib of others){
+          const r=sib.getBoundingClientRect();
+          if(y < r.top + r.height/2){ ref=sib; break; }
+        }
+        if(ref) container.insertBefore(dragging, ref);
+        else container.appendChild(dragging);
+      };
+      const onUp=()=>{
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        if(dragging) dragging.classList.remove('dragging');
+        if(moved){
+          THEME_DRAG_TS = Date.now();
+          const order = Array.prototype.slice.call(container.querySelectorAll('.theme-stat-card')).map(c=>c.dataset.theme);
+          DATA.themeOrder = order;
+          saveData(DATA);
+        }
+        dragging=null;
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
+  });
+}
+
+function renderStats(){
+  const totals = computeTotals(DATA.operations); // solde toujours sur toute la période
+
+  if(!statsThemeMonth) statsThemeMonth = todayISO().slice(0,7);
+  const stMode = statsThemeMode;
+  const stMonth = statsThemeMonth;
+  const themeOps = (stMode==='all') ? DATA.operations : DATA.operations.filter(o=> (o.date||'').slice(0,7)===stMonth);
+
+  const themeMap = {};
+  themeOps.forEach(o=>{
+    const t = o.theme || '(Sans thème)';
+    if(!themeMap[t]) themeMap[t]={credit:0,debit:0};
+    if(o.type==='credit') themeMap[t].credit += Number(o.amount)||0;
+    else themeMap[t].debit += Number(o.amount)||0;
+  });
+  const order = Array.isArray(DATA.themeOrder) ? DATA.themeOrder : [];
+  const themeNames = Object.keys(themeMap).sort((a,b)=>{
+    let ia=order.indexOf(a), ib=order.indexOf(b);
+    if(ia===-1) ia=1e9; if(ib===-1) ib=1e9;
+    return (ia-ib) || a.localeCompare(b);
+  });
+
+  const compteMap = {};
+  themeOps.forEach(o=>{
+    const c = o.compte || '(Sans compte)';
+    if(!compteMap[c]) compteMap[c]={credit:0,debit:0};
+    if(o.type==='credit') compteMap[c].credit += Number(o.amount)||0;
+    else compteMap[c].debit += Number(o.amount)||0;
+  });
+  const cOrder = DATA.comptes || [];
+  const compteNames = Object.keys(compteMap).sort((a,b)=>{
+    let ia=cOrder.indexOf(a), ib=cOrder.indexOf(b);
+    if(ia===-1) ia=1e9; if(ib===-1) ib=1e9;
+    return (ia-ib) || a.localeCompare(b);
+  });
+
+  function subFor(mode, name){
+    const m = {};
+    themeOps.forEach(o=>{
+      const primary = (mode==='theme') ? (o.theme||'(Sans thème)') : (o.compte||'(Sans compte)');
+      if(primary!==name) return;
+      const key = (mode==='theme') ? (o.compte||'(Sans compte)') : (o.theme||'(Sans thème)');
+      if(!m[key]) m[key]={credit:0,debit:0};
+      if(o.type==='credit') m[key].credit+=Number(o.amount)||0; else m[key].debit+=Number(o.amount)||0;
+    });
+    return m;
+  }
+  function subSubFor(mode, primaryName, secondaryName){
+    const m = {};
+    themeOps.forEach(o=>{
+      const primary = (mode==='theme') ? (o.theme||'(Sans thème)') : (o.compte||'(Sans compte)');
+      const secondary = (mode==='theme') ? (o.compte||'(Sans compte)') : (o.theme||'(Sans thème)');
+      if(primary!==primaryName || secondary!==secondaryName) return;
+      const z = o.subcat || '(Sans sous-cat.)';
+      if(!m[z]) m[z]={credit:0,debit:0};
+      if(o.type==='credit') m[z].credit+=Number(o.amount)||0; else m[z].debit+=Number(o.amount)||0;
+    });
+    return m;
+  }
+  function renderStatCard(mode, name, v){
+    const key = mode+':'+name;
+    const expanded = !!statsExpanded[key];
+    const sub = subFor(mode, name);
+    const subKeys = Object.keys(sub).sort((a,b)=>a.localeCompare(b));
+    const subRows = subKeys.length ? subKeys.map(k=>{
+      const sv=sub[k]; const solde=sv.credit-sv.debit;
+      const k2 = key + '|' + k;
+      const exp2 = !!statsExpanded[k2];
+      const ss = subSubFor(mode, name, k);
+      const ssKeys = Object.keys(ss).sort((a,b)=>a.localeCompare(b));
+      const ssHtml = exp2 ? `<div class="sc-sub2">${ssKeys.length ? ssKeys.map(z=>{
+          const zv=ss[z]; const zs=zv.credit-zv.debit;
+          return `<div class="sc-sub-row sc-sub-row3" data-mode="${mode}" data-primary="${escAttr(name)}" data-secondary="${escAttr(k)}" data-third="${escAttr(z)}">
+            <span>${escHtml(z)}</span>
+            <span class="s-solde" style="color:${zs>=0?'var(--credit)':'var(--debit)'}">${fmtMoney(zs)}</span>
+          </div>`;
+        }).join('') : `<div class="hint" style="padding-left:40px;">—</div>`}</div>` : '';
+      return `<div class="sc-lvl2 ${exp2?'sc-open':''}">
+        <div class="sc-sub-row sc-sub-head" data-key2="${escAttr(k2)}">
+          <span>${escHtml(k)} <span class="sc-chev2">›</span></span>
+          <span class="s-solde" style="color:${solde>=0?'var(--credit)':'var(--debit)'}">${fmtMoney(solde)}</span>
+        </div>
+        ${ssHtml}
+      </div>`;
+    }).join('') : `<div class="hint" style="padding-left:22px;">—</div>`;
+    const dataAttr = (mode==='theme') ? `data-theme="${escAttr(name)}"` : `data-compte="${escAttr(name)}"`;
+    const handle = (mode==='theme') ? `<span class="drag-handle" title="Glisser pour réordonner">⠿</span>` : '';
+    return `<div class="theme-stat-card ${expanded?'sc-open':''}" ${dataAttr} data-key="${escAttr(key)}">
+      <div class="sc-head">
+        ${handle}
+        <div class="tsc-body">
+          <div class="name">${escHtml(name)}</div>
+          <div class="nums">
+            <div class="c">Crédit ${fmtMoney(v.credit)}</div>
+            <div class="d">Débit ${fmtMoney(v.debit)}</div>
+            <div><strong>Solde ${fmtMoney(v.credit-v.debit)}</strong></div>
+          </div>
+        </div>
+        <span class="sc-chev">›</span>
+      </div>
+      ${expanded ? `<div class="sc-sub">${subRows}</div>` : ''}
+    </div>`;
+  }
+
+  app.innerHTML = `
+    <h1 class="page-title">Solde</h1>
+
+    <div class="solde-hero">
+      <div class="l">Solde actuel</div>
+      <div class="v">${fmtMoney(totals.solde)}</div>
+    </div>
+
+    <div class="filters" style="align-items:center; justify-content:space-between; gap:8px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        ${stMode==='month' ? `
+          <button class="pv-arrow" id="stPrev" aria-label="Mois précédent">‹</button>
+          <span class="pv-month-label" style="text-transform:capitalize;">${escHtml(monthLabel(stMonth))}</span>
+          <button class="pv-arrow" id="stNext" aria-label="Mois suivant">›</button>
+        ` : `<strong style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:0.9rem;">Toutes les périodes</strong>`}
+      </div>
+      <button class="btn btn-ghost btn-small" id="stToggle" style="flex:0 0 auto;">${stMode==='month' ? 'Toutes les périodes' : 'Par mois'}</button>
+    </div>
+    <div class="seg">
+      <button class="seg-btn ${statsGroupBy==='theme'?'active':''}" id="grpTheme">Par thème</button>
+      <button class="seg-btn ${statsGroupBy==='compte'?'active':''}" id="grpCompte">Par compte</button>
+    </div>
+
+    <div class="card" id="themeCards" style="margin-top:12px;">
+      ${(statsGroupBy==='theme'?themeNames:compteNames).length===0 ? `<div class="empty">${stMode==='month'?'Aucune opération ce mois-ci.':'Aucune donnée.'}</div>` :
+        (statsGroupBy==='theme'
+          ? themeNames.map(n=>renderStatCard('theme', n, themeMap[n])).join('')
+          : compteNames.map(n=>renderStatCard('compte', n, compteMap[n])).join('')
+        )
+      }
+    </div>
+
+    <div class="card">
+      <div class="section-label">Recherche libre (personne, thème, montant...)</div>
+      <div class="clearable" id="personClearable">
+        <input type="text" id="personSearch" placeholder="Tapez n'importe quoi : nom, thème, montant, date..." value="${escAttr(statsPersonQuery)}">
+        <button class="clear-x" id="personClear" aria-label="Effacer la recherche">✕</button>
+      </div>
+      <div id="personResults" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Flux de trésorerie mensuel</div>
+      <div class="table-wrap">${renderCashFlowTable()}</div>
+    </div>
+  `;
+
+  document.querySelectorAll('.theme-stat-card').forEach(card=>{
+    const head = card.querySelector('.sc-head');
+    if(head) head.addEventListener('click', e=>{
+      if(e.target.closest('.drag-handle')) return;
+      if(Date.now() - THEME_DRAG_TS < 300) return;
+      const k = card.dataset.key;
+      statsExpanded[k] = !statsExpanded[k];
+      renderStats();
+    });
+  });
+  document.querySelectorAll('.sc-sub-head').forEach(row=>{
+    row.addEventListener('click', e=>{
+      e.stopPropagation();
+      const k2 = row.dataset.key2;
+      statsExpanded[k2] = !statsExpanded[k2];
+      renderStats();
+    });
+  });
+  document.querySelectorAll('.sc-sub-row3').forEach(row=>{
+    row.addEventListener('click', e=>{
+      e.stopPropagation();
+      const mode=row.dataset.mode, primary=row.dataset.primary, secondary=row.dataset.secondary, third=row.dataset.third;
+      const theme = (mode==='theme') ? primary : secondary;
+      const compte = (mode==='theme') ? secondary : primary;
+      showCrossDetail(theme, compte, third);
+    });
+  });
+  if(statsGroupBy==='theme') enableThemeDragSort(document.getElementById('themeCards'));
+  const grpT = document.getElementById('grpTheme');
+  if(grpT) grpT.onclick = ()=>{ statsGroupBy='theme'; renderStats(); };
+  const grpC = document.getElementById('grpCompte');
+  if(grpC) grpC.onclick = ()=>{ statsGroupBy='compte'; renderStats(); };
+  const stPrevBtn = document.getElementById('stPrev');
+  if(stPrevBtn) stPrevBtn.onclick = ()=>{ statsThemeMonth = shiftMonth(stMonth,-1); renderStats(); };
+  const stNextBtn = document.getElementById('stNext');
+  if(stNextBtn) stNextBtn.onclick = ()=>{ statsThemeMonth = shiftMonth(stMonth, 1); renderStats(); };
+  const stToggleBtn = document.getElementById('stToggle');
+  if(stToggleBtn) stToggleBtn.onclick = ()=>{ statsThemeMode = (statsThemeMode==='all'?'month':'all'); renderStats(); };
+
+  const personInput = document.getElementById('personSearch');
+  const clearable = document.getElementById('personClearable');
+  const updateClear = ()=> clearable.classList.toggle('has-text', !!personInput.value);
+  personInput.oninput = e=>{
+    statsPersonQuery = e.target.value;
+    updateClear();
+    renderPersonResults();
+  };
+  document.getElementById('personClear').onclick = ()=>{
+    statsPersonQuery=''; personInput.value=''; updateClear(); renderPersonResults(); personInput.focus();
+  };
+  updateClear();
+  renderPersonResults();
+}
+
+function renderPersonResults(){
+  const box = document.getElementById('personResults');
+  if(!box) return;
+  if(!statsPersonQuery){ box.innerHTML=''; return; }
+  const q = statsPersonQuery.toLowerCase();
+  const matches = DATA.operations.filter(o=>{
+    return [o.desc, o.theme, o.subcat, o.date, fmtDate(o.date), String(o.amount), o.type==='credit'?'crédit':'débit']
+      .some(v=> String(v||'').toLowerCase().includes(q));
+  }).sort((a,b)=> b.date.localeCompare(a.date));
+
+  if(matches.length===0){ box.innerHTML = `<div class="empty">Aucun résultat.</div>`; return; }
+
+  const tot = computeTotals(matches);
+  const head = `<div class="search-summary">
+    <span class="pill ss-count">${matches.length} résultat${matches.length>1?'s':''}</span>
+    <span class="pill ss-c">Crédit ${fmtMoney(tot.credit)}</span>
+    <span class="pill ss-d">Débit ${fmtMoney(tot.debit)}</span>
+    <span class="pill ss-s">Solde ${fmtMoney(tot.solde)}</span>
+  </div>`;
+
+  box.innerHTML = head + matches.map(o=>`
+    <div class="person-list-item" data-id="${o.id}">
+      <span>
+        <span class="res-date utility">${fmtDate(o.date)}</span>
+        ${escHtml(o.desc) || '<em>(sans description)</em>'} <span class="hint utility">— ${escHtml(o.theme)||'sans thème'}</span>
+      </span>
+      <span class="${o.type==='credit'?'amt-c':'amt-d'}">${fmtMoney(o.amount)}</span>
+    </div>`).join('');
+
+  box.querySelectorAll('.person-list-item').forEach(el=>{
+    el.onclick = ()=>{
+      const op = DATA.operations.find(o=>o.id===el.dataset.id);
+      if(op) showOperationDetail(op);
+    };
+  });
+}
+
+function showOperationDetail(op){
+  openModal(`
+    <h2>${escHtml(op.desc) || 'Opération'}</h2>
+    <div class="stat-grid two-col" style="margin-bottom:14px;">
+      <div class="stat-box ${op.type}"><div class="v">${fmtMoney(op.amount)}</div><div class="l">${op.type==='credit'?'Crédit':'Débit'}</div></div>
+      <div class="stat-box solde"><div class="v" style="font-size:1.1rem;">${fmtDate(op.date)}</div><div class="l">Date</div></div>
+    </div>
+    <div class="kv-row"><div class="lbl"><strong>Thème</strong></div><div>${escHtml(op.theme)||'—'}</div></div>
+    <div class="kv-row"><div class="lbl"><strong>Compte</strong></div><div>${escHtml(op.compte)||'—'}</div></div>
+    <div class="kv-row"><div class="lbl"><strong>Sous-catégorie</strong></div><div>${escHtml(op.subcat)||'—'}</div></div>
+    <div class="kv-row"><div class="lbl"><strong>Description</strong></div><div>${escHtml(op.desc)||'—'}</div></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Fermer</button>
+      <button class="btn btn-primary" style="margin-top:0" id="goEditBtn">✎ Modifier l'opération</button>
+    </div>
+  `);
+  document.getElementById('goEditBtn').onclick = ()=>{
+    closeModal();
+    openHistEdit(op.id);
+  };
+}
+
+function showThemeDetail(theme){
+  const ops = DATA.operations.filter(o=> (o.theme||'(Sans thème)')===theme);
+  const t = computeTotals(ops);
+  const byCompte = {};
+  ops.forEach(o=>{ const c=o.compte||'(Sans compte)'; if(!byCompte[c]) byCompte[c]={credit:0,debit:0}; if(o.type==='credit') byCompte[c].credit+=Number(o.amount)||0; else byCompte[c].debit+=Number(o.amount)||0; });
+  openModal(`
+    <h2>${escHtml(theme)}</h2>
+    <div class="stat-grid">
+      <div class="stat-box credit"><div class="v">${fmtMoney(t.credit)}</div><div class="l">Crédit</div></div>
+      <div class="stat-box debit"><div class="v">${fmtMoney(t.debit)}</div><div class="l">Débit</div></div>
+      <div class="stat-box solde"><div class="v">${fmtMoney(t.solde)}</div><div class="l">Solde</div></div>
+    </div>
+    <div class="section-label" style="margin-top:6px;">Par compte</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Compte</th><th>Crédit</th><th>Débit</th><th>Solde</th></tr></thead>
+        <tbody>${Object.entries(byCompte).map(([c,v])=>`<tr><td>${escHtml(c)}</td><td class="amt" style="color:var(--credit)">${fmtMoney(v.credit)}</td><td class="amt" style="color:var(--debit)">${fmtMoney(v.debit)}</td><td class="amt">${fmtMoney(v.credit-v.debit)}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="section-label" style="margin-top:12px;">Opérations</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Sous-cat.</th><th>Description</th><th>Montant</th></tr></thead>
+        <tbody>
+          ${ops.sort((a,b)=>b.date.localeCompare(a.date)).map(o=>`
+            <tr class="row-${o.type} clickable-row" data-id="${o.id}"><td>${fmtDate(o.date)}</td><td>${escHtml(o.subcat)}</td><td>${escHtml(o.desc)}</td><td class="amt">${fmtMoney(o.amount)}</td></tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Fermer</button></div>
+  `);
+  document.querySelectorAll('#modalBody tr[data-id]').forEach(tr=>{
+    tr.onclick = ()=>{
+      const op = DATA.operations.find(o=>o.id===tr.dataset.id);
+      if(op) showOperationDetail(op);
+    };
+  });
+}
+
+function showCompteDetail(compte){
+  const ops = DATA.operations.filter(o=> (o.compte||'(Sans compte)')===compte);
+  const t = computeTotals(ops);
+  const byTheme = {};
+  ops.forEach(o=>{ const th=o.theme||'(Sans thème)'; if(!byTheme[th]) byTheme[th]={credit:0,debit:0}; if(o.type==='credit') byTheme[th].credit+=Number(o.amount)||0; else byTheme[th].debit+=Number(o.amount)||0; });
+  openModal(`
+    <h2>${escHtml(compte)}</h2>
+    <div class="stat-grid">
+      <div class="stat-box credit"><div class="v">${fmtMoney(t.credit)}</div><div class="l">Crédit</div></div>
+      <div class="stat-box debit"><div class="v">${fmtMoney(t.debit)}</div><div class="l">Débit</div></div>
+      <div class="stat-box solde"><div class="v">${fmtMoney(t.solde)}</div><div class="l">Solde</div></div>
+    </div>
+    <div class="section-label" style="margin-top:6px;">Par thème</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Thème</th><th>Crédit</th><th>Débit</th><th>Solde</th></tr></thead>
+        <tbody>${Object.entries(byTheme).map(([th,v])=>`<tr><td>${escHtml(th)}</td><td class="amt" style="color:var(--credit)">${fmtMoney(v.credit)}</td><td class="amt" style="color:var(--debit)">${fmtMoney(v.debit)}</td><td class="amt">${fmtMoney(v.credit-v.debit)}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="section-label" style="margin-top:12px;">Opérations</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Thème</th><th>Description</th><th>Montant</th></tr></thead>
+        <tbody>
+          ${ops.sort((a,b)=>b.date.localeCompare(a.date)).map(o=>`<tr class="row-${o.type} clickable-row" data-id="${o.id}"><td>${fmtDate(o.date)}</td><td>${escHtml(o.theme)}</td><td>${escHtml(o.desc)}</td><td class="amt">${fmtMoney(o.amount)}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Fermer</button></div>
+  `);
+  document.querySelectorAll('#modalBody tr[data-id]').forEach(tr=>{
+    tr.onclick = ()=>{ const op=DATA.operations.find(o=>o.id===tr.dataset.id); if(op) showOperationDetail(op); };
+  });
+}
+
+function showCrossDetail(theme, compte, subcat){
+  let ops = DATA.operations.filter(o=> (o.theme||'(Sans thème)')===theme && (o.compte||'(Sans compte)')===compte);
+  if(subcat!==undefined && subcat!==null) ops = ops.filter(o=> (o.subcat||'(Sans sous-cat.)')===subcat);
+  const t = computeTotals(ops);
+  openModal(`
+    <h2>${escHtml(theme)} · ${escHtml(compte)}${(subcat!==undefined && subcat!==null) ? (' · '+escHtml(subcat)) : ''}</h2>
+    <div class="stat-grid">
+      <div class="stat-box credit"><div class="v">${fmtMoney(t.credit)}</div><div class="l">Crédit</div></div>
+      <div class="stat-box debit"><div class="v">${fmtMoney(t.debit)}</div><div class="l">Débit</div></div>
+      <div class="stat-box solde"><div class="v">${fmtMoney(t.solde)}</div><div class="l">Solde</div></div>
+    </div>
+    <div class="section-label" style="margin-top:6px;">Opérations</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Description</th><th>Montant</th></tr></thead>
+        <tbody>
+          ${ops.sort((a,b)=>b.date.localeCompare(a.date)).map(o=>`<tr class="row-${o.type} clickable-row" data-id="${o.id}"><td>${fmtDate(o.date)}</td><td>${escHtml(o.desc)}</td><td class="amt">${fmtMoney(o.amount)}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Fermer</button></div>
+  `);
+  document.querySelectorAll('#modalBody tr[data-id]').forEach(tr=>{
+    tr.onclick = ()=>{ const op=DATA.operations.find(o=>o.id===tr.dataset.id); if(op) showOperationDetail(op); };
+  });
+}
+
+function goToOperationInHistory(opId){
+  pendingHighlightId = opId;
+  historySearch = '';
+  navigate('historique');
+}
+
+function renderCashFlowTable(){
+  const months = {};
+  DATA.operations.forEach(o=>{
+    const m = (o.date||'').slice(0,7);
+    if(!m) return;
+    if(!months[m]) months[m]={credit:0,debit:0};
+    if(o.type==='credit') months[m].credit += Number(o.amount)||0;
+    else months[m].debit += Number(o.amount)||0;
+  });
+  const keys = Object.keys(months).sort();
+  if(keys.length===0) return `<div class="empty">Aucune donnée.</div>`;
+  let running = 0;
+  const rows = keys.map(m=>{
+    const start = running;
+    running += months[m].credit - months[m].debit;
+    const [y,mo] = m.split('-');
+    const label = new Date(y, mo-1, 1).toLocaleDateString('fr-FR',{month:'long', year:'numeric'});
+    return `<tr>
+      <td data-label="Mois">${escHtml(label)}</td>
+      <td data-label="Solde début" class="amt">${fmtMoney(start)}</td>
+      <td data-label="Crédits" class="amt" style="color:var(--credit)">${fmtMoney(months[m].credit)}</td>
+      <td data-label="Débits" class="amt" style="color:var(--debit)">${fmtMoney(months[m].debit)}</td>
+      <td data-label="Solde fin" class="amt"><strong>${fmtMoney(running)}</strong></td>
+    </tr>`;
+  }).join('');
+  return `<table class="resp">
+    <thead><tr><th>Mois</th><th>Solde début</th><th>Crédits</th><th>Débits</th><th>Solde fin</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+/* ============ PAGE: PRÉVISIONNEL ============ */
+const PREV_DEFAULT_THEMES = ["Club Cacher","Talmud Torah"];
+let PREV_EXTRA_MONTHS = []; // mois ajoutés manuellement (session)
+let PREV_SUMMARY_MONTH = null; // mois du carré "Solde prévu fin" (navigable)
+let PREV_SUMMARY_MONTH2 = null; // mois du carré "Prévu sans crédits"
+let PREV_OPEN_MONTH = null;     // mois ouvert (accordéon)
+let PREV_INIT = false;
+
+function curMonthKey(){ return todayISO().slice(0,7); }
+function shiftMonth(mk, delta){
+  let [y,m] = mk.split('-').map(Number);
+  m += delta;
+  y += Math.floor((m-1)/12);
+  m = ((m-1)%12+12)%12 + 1;
+  return y + '-' + String(m).padStart(2,'0');
+}
+function monthLabel(mk){
+  const [y,m] = mk.split('-');
+  return new Date(Number(y), Number(m)-1, 1).toLocaleDateString('fr-FR',{month:'long', year:'numeric'});
+}
+function ensureMonth(mk){ if(!DATA.forecast.months[mk]) DATA.forecast.months[mk] = {}; }
+function monthEntry(mk, theme){
+  const mo = DATA.forecast.months[mk]; const e = mo && mo[theme];
+  if(e && typeof e==='object') return { debit:Number(e.debit)||0, credit:Number(e.credit)||0 };
+  if(typeof e==='number') return { debit:e, credit:0 };
+  return { debit:0, credit:0 };
+}
+function monthDebitTotal(mk){
+  const mo=DATA.forecast.months[mk]; if(!mo) return 0;
+  return Object.keys(mo).reduce((s,t)=> s + monthEntry(mk,t).debit, 0);
+}
+function monthCreditTotal(mk){
+  const mo=DATA.forecast.months[mk]; if(!mo) return 0;
+  return Object.keys(mo).reduce((s,t)=> s + monthEntry(mk,t).credit, 0);
+}
+function uniqueThemes(mk){
+  const set=[];
+  PREV_DEFAULT_THEMES.forEach(t=> set.push(t));
+  const mo=DATA.forecast.months[mk]||{};
+  Object.keys(mo).forEach(t=>{ if(set.indexOf(t)===-1) set.push(t); });
+  return set;
+}
+function monthHasData(mk){
+  const mo=DATA.forecast.months[mk];
+  return !!(mo && Object.keys(mo).length);
+}
+function prevMonthsList(){
+  const set=new Set([curMonthKey()]);
+  Object.keys(DATA.forecast.months).forEach(m=>{ if(monthHasData(m)) set.add(m); });
+  PREV_EXTRA_MONTHS.forEach(m=> set.add(m));
+  return Array.from(set).sort();
+}
+function globalSolde(){ return computeTotals(DATA.operations).solde; }
+function realDebitMonthTheme(mk, theme){
+  let d=0;
+  DATA.operations.forEach(o=>{
+    if((o.date||'').slice(0,7)===mk && (o.theme||'(Sans thème)')===theme && o.type==='debit') d += Number(o.amount)||0;
+  });
+  return d;
+}
+
+function projectedEnd(mk){
+  let bal = globalSolde();
+  Object.keys(DATA.forecast.months).filter(monthHasData).sort().forEach(m=>{
+    if(m <= mk) bal += monthCreditTotal(m) - monthDebitTotal(m);
+  });
+  return bal;
+}
+
+function projectedEndNoCredits(mk){
+  let bal = globalSolde();
+  Object.keys(DATA.forecast.months).filter(monthHasData).sort().forEach(m=>{
+    if(m <= mk) bal -= monthDebitTotal(m);
+  });
+  return bal;
+}
+
+function renderPrevisionnel(){
+  if(!PREV_INIT){ PREV_OPEN_MONTH = curMonthKey(); PREV_INIT = true; }
+  if(!PREV_SUMMARY_MONTH) PREV_SUMMARY_MONTH = curMonthKey();
+  if(!PREV_SUMMARY_MONTH2) PREV_SUMMARY_MONTH2 = curMonthKey();
+  const sm = PREV_SUMMARY_MONTH;
+  const sm2 = PREV_SUMMARY_MONTH2;
+  const months = prevMonthsList();
+  const realSolde = globalSolde();
+
+  const cards = months.map(mk=>{
+    const opened = (mk===PREV_OPEN_MONTH);
+    const end = projectedEnd(mk);
+    const net = monthCreditTotal(mk) - monthDebitTotal(mk);
+    let body = '';
+    if(opened){
+      const themes = uniqueThemes(mk);
+      const rows = themes.map(t=>{
+        const e = monthEntry(mk, t);
+        const reel = realDebitMonthTheme(mk, t);
+        const isDef = PREV_DEFAULT_THEMES.indexOf(t)!==-1;
+        return `<tr>
+          <td data-label="Thème"><strong>${escHtml(t)}</strong></td>
+          <td data-label="Dép. prévue"><input type="number" step="0.01" value="${e.debit||''}" data-mk="${mk}" data-th="${escAttr(t)}" data-kind="debit" placeholder="0" style="max-width:95px;text-align:right"></td>
+          <td data-label="Créd. prévu"><input type="number" step="0.01" value="${e.credit||''}" data-mk="${mk}" data-th="${escAttr(t)}" data-kind="credit" placeholder="0" style="max-width:95px;text-align:right"></td>
+          <td data-label="Réel dép." class="amt" style="color:var(--debit)">${fmtMoney(reel)}</td>
+          <td data-label="">${isDef?'':`<button class="icon-btn" data-del-mk="${mk}" data-del-th="${escAttr(t)}" title="Retirer">✕</button>`}</td>
+        </tr>`;
+      }).join('');
+      body = `<div class="pv-body">
+        <div class="table-wrap">
+          <table class="resp">
+            <thead><tr><th>Thème</th><th>Dép. prévue</th><th>Créd. prévu</th><th>Réel dép.</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="pv-month-net">Net prévu du mois : <strong style="color:${net>=0?'var(--credit)':'var(--debit)'}">${net>=0?'+':''}${fmtMoney(net)}</strong></div>
+        <button class="btn btn-ghost btn-small" data-add="${mk}">+ Ajouter (ponctuel / mensuel)</button>
+      </div>`;
+    }
+    return `<div class="card pv-month-card ${opened?'pv-open':''}">
+      <div class="pv-acc-head" data-toggle="${mk}">
+        <div class="pv-month-title">${escHtml(monthLabel(mk))}</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="pv-month-end">Solde fin : <strong style="color:var(--accent)">${fmtMoney(end)}</strong></div>
+          <span class="pv-chev">›</span>
+        </div>
+      </div>
+      ${body}
+    </div>`;
+  }).join('');
+
+  app.innerHTML = `
+    <h1 class="page-title">Prévisionnel</h1>
+
+    <div class="stat-grid">
+      <div class="stat-box solde"><div class="v">${fmtMoney(realSolde)}</div><div class="l">Solde réel actuel <span class="pv-tag reel">réel</span></div></div>
+      <div class="stat-box">
+        <div class="v" style="color:var(--accent)">${fmtMoney(projectedEnd(sm))}</div>
+        <div class="l" style="display:flex; align-items:center; justify-content:center; gap:6px; margin-top:6px;">
+          <button class="pv-arrow" id="pvPrev" aria-label="Mois précédent">‹</button>
+          <span class="pv-month-label" style="text-transform:capitalize;">${escHtml(monthLabel(sm))}</span>
+          <button class="pv-arrow" id="pvNext" aria-label="Mois suivant">›</button>
+        </div>
+        <div class="l" style="margin-top:4px;">Solde prévu fin <span class="pv-tag">avec crédits</span></div>
+      </div>
+      <div class="stat-box">
+        <div class="v" style="color:var(--debit)">${fmtMoney(projectedEndNoCredits(sm2))}</div>
+        <div class="l" style="display:flex; align-items:center; justify-content:center; gap:6px; margin-top:6px;">
+          <button class="pv-arrow" id="pvPrev2" aria-label="Mois précédent">‹</button>
+          <span class="pv-month-label" style="text-transform:capitalize;">${escHtml(monthLabel(sm2))}</span>
+          <button class="pv-arrow" id="pvNext2" aria-label="Mois suivant">›</button>
+        </div>
+        <div class="l" style="margin-top:4px;">Prévu sans crédits <span class="pv-tag">dép. seules</span></div>
+      </div>
+    </div>
+
+    <p class="hint" style="margin:0 2px 12px;">Chaque mois est une rubrique : clique dessus pour l'ouvrir. Le solde prévu part du solde réel puis cumule les crédits et dépenses prévus, mois après mois.</p>
+
+    ${cards}
+
+    <button class="btn btn-ghost btn-small" id="pvAddMonth" style="margin-top:4px;">+ Ajouter un mois</button>
+  `;
+
+  document.getElementById('pvPrev').onclick = ()=>{ PREV_SUMMARY_MONTH = shiftMonth(sm,-1); renderPrevisionnel(); };
+  document.getElementById('pvNext').onclick = ()=>{ PREV_SUMMARY_MONTH = shiftMonth(sm, 1); renderPrevisionnel(); };
+  document.getElementById('pvPrev2').onclick = ()=>{ PREV_SUMMARY_MONTH2 = shiftMonth(sm2,-1); renderPrevisionnel(); };
+  document.getElementById('pvNext2').onclick = ()=>{ PREV_SUMMARY_MONTH2 = shiftMonth(sm2, 1); renderPrevisionnel(); };
+
+  app.querySelectorAll('.pv-acc-head[data-toggle]').forEach(h=>{
+    h.onclick = ()=>{
+      const mk=h.dataset.toggle;
+      PREV_OPEN_MONTH = (PREV_OPEN_MONTH===mk) ? null : mk;
+      renderPrevisionnel();
+    };
+  });
+  app.querySelectorAll('input[data-mk]').forEach(inp=>{
+    inp.onchange = ()=>{
+      const mk=inp.dataset.mk, t=inp.dataset.th, kind=inp.dataset.kind;
+      ensureMonth(mk);
+      if(!DATA.forecast.months[mk][t] || typeof DATA.forecast.months[mk][t]!=='object') DATA.forecast.months[mk][t]={debit:0,credit:0};
+      DATA.forecast.months[mk][t][kind]=parseFloat(inp.value)||0;
+      saveData(DATA); renderPrevisionnel();
+    };
+  });
+  app.querySelectorAll('[data-del-mk]').forEach(b=>{
+    b.onclick = ()=>{ delete DATA.forecast.months[b.dataset.delMk][b.dataset.delTh]; saveData(DATA); renderPrevisionnel(); };
+  });
+  app.querySelectorAll('[data-add]').forEach(b=>{
+    b.onclick = ()=> openAddPrevModal(b.dataset.add);
+  });
+  document.getElementById('pvAddMonth').onclick = ()=>{
+    const ms = prevMonthsList(); const last = ms[ms.length-1] || curMonthKey();
+    const nm = shiftMonth(last, 1);
+    if(PREV_EXTRA_MONTHS.indexOf(nm)===-1) PREV_EXTRA_MONTHS.push(nm);
+    PREV_OPEN_MONTH = nm;
+    renderPrevisionnel();
+  };
+}
+
+function openAddPrevModal(mk){
+  const themeOpts = Object.keys(DATA.themes);
+  openModal(`
+    <h2>Ajouter — ${escHtml(monthLabel(mk))}</h2>
+    <label class="field-label" for="apTheme">Thème</label>
+    <input type="text" id="apTheme" list="apThList" placeholder="Nom du thème">
+    <datalist id="apThList">${themeOpts.map(t=>`<option value="${escAttr(t)}"></option>`).join('')}</datalist>
+
+    <div class="section-label" style="margin-top:14px;">Type</div>
+    <div class="type-toggle" style="margin-bottom:4px;">
+      <button class="type-btn debit selected" id="apDebit">Dépense</button>
+      <button class="type-btn credit" id="apCredit">Crédit</button>
+    </div>
+
+    <label class="field-label" for="apAmt">Montant</label>
+    <input type="number" step="0.01" class="amount-input" id="apAmt" placeholder="0,00">
+
+    <div class="section-label" style="margin-top:14px;">Fréquence</div>
+    <div class="type-toggle" style="margin-bottom:4px;">
+      <button class="type-btn selected" id="apOnce" style="background:var(--ink); color:var(--paper); border-color:var(--ink);">Ponctuelle</button>
+      <button class="type-btn" id="apMonthly" style="background:var(--white); color:var(--ink);">Mensuelle</button>
+    </div>
+    <div id="apMonthsWrap" style="display:none;">
+      <label class="field-label" for="apMonths">Sur combien de mois ?</label>
+      <input type="number" min="1" max="36" id="apMonths" value="3">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" style="margin-top:0" id="apOk">Ajouter</button>
+    </div>
+  `);
+  let kind='debit', freq='once';
+  const setKind=k=>{ kind=k;
+    document.getElementById('apDebit').classList.toggle('selected',k==='debit');
+    document.getElementById('apCredit').classList.toggle('selected',k==='credit');
+  };
+  document.getElementById('apDebit').onclick=()=>setKind('debit');
+  document.getElementById('apCredit').onclick=()=>setKind('credit');
+  const setFreq=f=>{ freq=f;
+    const once=document.getElementById('apOnce'), mon=document.getElementById('apMonthly');
+    once.style.background=f==='once'?'var(--ink)':'var(--white)'; once.style.color=f==='once'?'var(--paper)':'var(--ink)'; once.style.borderColor=f==='once'?'var(--ink)':'var(--line)';
+    mon.style.background=f==='monthly'?'var(--ink)':'var(--white)'; mon.style.color=f==='monthly'?'var(--paper)':'var(--ink)'; mon.style.borderColor=f==='monthly'?'var(--ink)':'var(--line)';
+    document.getElementById('apMonthsWrap').style.display=f==='monthly'?'block':'none';
+  };
+  document.getElementById('apOnce').onclick=()=>setFreq('once');
+  document.getElementById('apMonthly').onclick=()=>setFreq('monthly');
+  document.getElementById('apOk').onclick=()=>{
+    const theme=document.getElementById('apTheme').value.trim();
+    const amt=parseFloat(document.getElementById('apAmt').value)||0;
+    if(!theme || !amt){ toast('Renseigne un thème et un montant'); return; }
+    const n = freq==='monthly' ? Math.max(1, Math.min(36, parseInt(document.getElementById('apMonths').value)||1)) : 1;
+    for(let i=0;i<n;i++){
+      const m = shiftMonth(mk, i);
+      ensureMonth(m);
+      if(!DATA.forecast.months[m][theme] || typeof DATA.forecast.months[m][theme]!=='object') DATA.forecast.months[m][theme]={debit:0,credit:0};
+      DATA.forecast.months[m][theme][kind] += amt;
+    }
+    saveData(DATA);
+    closeModal();
+    toast(n>1 ? (n+' mois ajoutés ✓') : 'Ajouté ✓');
+    renderPrevisionnel();
+  };
+  setTimeout(()=>document.getElementById('apTheme') && document.getElementById('apTheme').focus(), 50);
+}
+
+/* ============ PAGE: PARAMÈTRES ============ */
+function renderParametres(){
+  app.innerHTML = `
+    <h1 class="page-title">Paramètres</h1>
+
+    <div class="card settings-group">
+      <h3>Synchronisation (Google Sheet)</h3>
+      ${SYNC_MODE==='sheet' ? `
+        <p class="hint" style="color:var(--credit); font-weight:600;">✓ Connecté au Google Sheet — les données sont partagées entre tous les appareils.</p>
+      ` : `
+        <p class="hint" style="color:var(--debit); font-weight:600;">⚠ Non connecté : les données restent sur cet appareil. Renseigne l'URL du Web App Apps Script ci-dessous.</p>
+      `}
+      <label class="field-label" for="webappUrlInput">URL du Web App (Apps Script)</label>
+      <input type="text" id="webappUrlInput" placeholder="https://script.google.com/macros/s/.../exec" value="${escAttr(getWebAppUrl())}">
+      <button class="btn btn-primary" id="saveWebappBtn" style="margin-top:10px;">🔗 Enregistrer &amp; reconnecter</button>
+    </div>
+
+    <div class="card settings-group">
+      <h3>Compte</h3>
+      <p class="hint">Connecté en tant que <strong>${escHtml(ACCESS_EMAIL)}</strong>.</p>
+      <button class="btn btn-ghost btn-small" id="logoutBtn">Se déconnecter</button>
+    </div>
+
+    <div class="card settings-group">
+      <h3>Thèmes & sous-catégories</h3>
+      <div id="themesList"></div>
+      <button class="btn btn-ghost btn-small" id="addThemeBtn" style="margin-top:8px;">+ Ajouter un thème</button>
+    </div>
+
+    <div class="card settings-group">
+      <h3>Exportation</h3>
+      <p class="hint">Exportez toutes les opérations au format CSV (compatible Excel).</p>
+      <button class="btn btn-ghost" id="exportCsvBtn">⬇ Exporter en CSV</button>
+      <p class="hint" style="margin-top:14px;">Exportez une sauvegarde complète (thèmes + opérations) au format JSON.</p>
+      <button class="btn btn-ghost" id="exportJsonBtn">⬇ Exporter la sauvegarde (JSON)</button>
+    </div>
+
+    <div class="card settings-group">
+      <h3>Importation</h3>
+      <p class="hint">Importez un fichier CSV d'opérations (colonnes : date, type, theme, subcat, desc, amount) ou restaurez une sauvegarde JSON complète.</p>
+      <input type="file" id="importFile" accept=".csv,.json">
+    </div>
+
+    <div class="card settings-group">
+      <h3>Zone sensible</h3>
+      <p class="hint">Cette action supprime définitivement toutes les opérations enregistrées${SYNC_MODE==='sheet'?' (sur tous les appareils connectés)':' sur cet appareil'}.</p>
+      <button class="btn btn-danger" id="resetBtn">🗑 Réinitialiser toutes les données</button>
+    </div>
+  `;
+
+  const saveWebappBtn = document.getElementById('saveWebappBtn');
+  if(saveWebappBtn){
+    saveWebappBtn.onclick = ()=>{
+      const u = document.getElementById('webappUrlInput').value.trim();
+      setWebAppUrl(u);
+      toast('URL enregistrée — reconnexion...');
+      location.reload();
+    };
+  }
+  const logoutBtn = document.getElementById('logoutBtn');
+  if(logoutBtn){
+    logoutBtn.onclick = ()=>{
+      if(confirm('Se déconnecter de l\'app ?')){
+        localStorage.removeItem(AUTH_KEY);
+        location.reload();
+      }
+    };
+  }
+
+  renderThemesList();
+  document.getElementById('addThemeBtn').onclick = ()=>{
+    promptText('Nouveau thème', 'Nom du thème', val=>{
+      if(!val) return;
+      if(!DATA.themes[val]) DATA.themes[val]={credit:[],debit:[]};
+      saveData(DATA);
+      renderParametres();
+    });
+  };
+  document.getElementById('exportCsvBtn').onclick = exportCsv;
+  document.getElementById('exportJsonBtn').onclick = exportJson;
+  document.getElementById('importFile').onchange = handleImport;
+  document.getElementById('resetBtn').onclick = ()=>{
+    if(confirm('Êtes-vous sûr ? Toutes les opérations seront supprimées définitivement.')){
+      DATA = defaultData();
+      saveData(DATA);
+      toast('Données réinitialisées');
+      renderParametres();
+    }
+  };
+}
+
+function renderThemesList(){
+  const box = document.getElementById('themesList');
+  const names = Object.keys(DATA.themes);
+  if(names.length===0){ box.innerHTML = `<div class="empty">Aucun thème.</div>`; return; }
+  box.innerHTML = names.map(name=>{
+    const th = DATA.themes[name];
+    return `<div style="margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--line);">
+      <div class="kv-row">
+        <div class="lbl"><strong>${escHtml(name)}</strong></div>
+        <button class="icon-btn" data-deltheme="${escAttr(name)}" title="Supprimer le thème">✕</button>
+      </div>
+      <div class="utility hint" style="margin-bottom:4px;">Crédit :</div>
+      <div class="chip-row" style="margin-bottom:8px;">
+        ${th.credit.length===0 ? `<span class="hint utility">—</span>` : th.credit.map(s=>`
+          <span class="chip" style="cursor:default; padding-right:8px;">${escHtml(s)}
+            <button class="icon-btn" style="padding:0 0 0 6px;" data-delsub="${escAttr(name)}" data-subtype="credit" data-subname="${escAttr(s)}" title="Supprimer">✕</button>
+          </span>`).join('')}
+      </div>
+      <div class="utility hint" style="margin-bottom:4px;">Débit :</div>
+      <div class="chip-row" style="margin-bottom:8px;">
+        ${th.debit.length===0 ? `<span class="hint utility">—</span>` : th.debit.map(s=>`
+          <span class="chip" style="cursor:default; padding-right:8px;">${escHtml(s)}
+            <button class="icon-btn" style="padding:0 0 0 6px;" data-delsub="${escAttr(name)}" data-subtype="debit" data-subname="${escAttr(s)}" title="Supprimer">✕</button>
+          </span>`).join('')}
+      </div>
+      <div style="display:flex; gap:8px; margin-top:6px;">
+        <button class="btn btn-ghost btn-small" data-addsub="${escAttr(name)}" data-type="credit">+ sous-cat. crédit</button>
+        <button class="btn btn-ghost btn-small" data-addsub="${escAttr(name)}" data-type="debit">+ sous-cat. débit</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  box.querySelectorAll('[data-deltheme]').forEach(b=>{
+    b.onclick = ()=>{
+      const name = b.dataset.deltheme;
+      if(confirm(`Supprimer le thème "${name}" ? Les opérations déjà enregistrées seront conservées avec ce nom.`)){
+        delete DATA.themes[name];
+        saveData(DATA);
+        renderParametres();
+      }
+    };
+  });
+  box.querySelectorAll('[data-delsub]').forEach(b=>{
+    b.onclick = ()=>{
+      const theme = b.dataset.delsub, type = b.dataset.subtype, sub = b.dataset.subname;
+      if(confirm(`Supprimer la sous-catégorie "${sub}" ? Les opérations déjà enregistrées avec cette sous-catégorie seront conservées telles quelles.`)){
+        DATA.themes[theme][type] = DATA.themes[theme][type].filter(s=>s!==sub);
+        saveData(DATA);
+        toast('Sous-catégorie supprimée');
+        renderParametres();
+      }
+    };
+  });
+  box.querySelectorAll('[data-addsub]').forEach(b=>{
+    b.onclick = ()=>{
+      const name = b.dataset.addsub, type = b.dataset.type;
+      promptText('Nouvelle sous-catégorie', `${name} — ${type==='credit'?'Crédit':'Débit'}`, val=>{
+        if(!val) return;
+        if(!DATA.themes[name][type].includes(val)) DATA.themes[name][type].push(val);
+        saveData(DATA);
+        renderParametres();
+      });
+    };
+  });
+}
+
+function exportCsv(){
+  const header = ['date','type','compte','theme','subcat','desc','amount'];
+  const rows = DATA.operations.map(o=> header.map(h=> csvEscape(o[h])).join(','));
+  const csv = [header.join(','), ...rows].join('\n');
+  downloadFile('operations.csv', csv, 'text/csv');
+  toast('CSV exporté');
+}
+function csvEscape(v){
+  const s = String(v ?? '');
+  if(/[",\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function exportJson(){
+  downloadFile('sauvegarde_lichka.json', JSON.stringify(DATA, null, 2), 'application/json');
+  toast('Sauvegarde exportée');
+}
+function downloadFile(name, content, mime){
+  const blob = new Blob([content], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function handleImport(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    try{
+      if(file.name.endsWith('.json')){
+        const parsed = JSON.parse(ev.target.result);
+        if(!parsed.operations || !parsed.themes) throw new Error('Format invalide');
+        DATA = normalizeData(parsed);
+        saveData(DATA);
+        toast('Sauvegarde restaurée');
+        renderParametres();
+      } else {
+        const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+        const header = parseCsvLine(lines[0]).map(h=>h.trim().toLowerCase());
+        let count=0;
+        for(let i=1;i<lines.length;i++){
+          const vals = parseCsvLine(lines[i]);
+          const obj = {};
+          header.forEach((h,idx)=> obj[h]=vals[idx]);
+          DATA.operations.unshift({
+            id: uid(),
+            date: obj.date || todayISO(),
+            type: (obj.type||'credit').toLowerCase().includes('d') ? 'debit':'credit',
+            compte: obj.compte||'',
+            theme: obj.theme||'',
+            subcat: obj.subcat||'',
+            desc: obj.desc||'',
+            amount: parseFloat(obj.amount)||0
+          });
+          count++;
+        }
+        saveData(DATA);
+        toast(count+' opération(s) importée(s)');
+        renderParametres();
+      }
+    }catch(err){
+      alert('Erreur lors de l\'importation : '+err.message);
+    }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+function parseCsvLine(line){
+  const out=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(inQ){
+      if(c==='"' && line[i+1]==='"'){cur+='"'; i++;}
+      else if(c==='"'){inQ=false;}
+      else cur+=c;
+    } else {
+      if(c==='"') inQ=true;
+      else if(c===','){out.push(cur); cur='';}
+      else cur+=c;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+/* ============ UTIL ============ */
+function escHtml(s){
+  return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escAttr(s){ return escHtml(s); }
+
+/* ============ AUTH GATE + INIT ============ */
+function isAuthed(){ return localStorage.getItem(AUTH_KEY) === '1'; }
+
+function showLogin(){
+  const hdr = document.querySelector('header');
+  if(hdr) hdr.style.display = 'none';
+  const fabEl = document.getElementById('fab'); if(fabEl) fabEl.style.display='none';
+  closeFab();
+  app.innerHTML = `
+    <div style="max-width:380px; margin:8vh auto 0; text-align:center;">
+      <div style="font-size:2rem; color:var(--accent); line-height:1;">&#9096;</div>
+      <h1 style="font-size:1.5rem; margin:8px 0 2px;">Lichka</h1>
+      <p class="hint" style="margin-bottom:22px;">Gestion des esp&egrave;ces &mdash; acc&egrave;s r&eacute;serv&eacute;</p>
+      <div class="card" style="text-align:left;">
+        <label class="field-label" for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" placeholder="votre email" autocomplete="username">
+        <label class="field-label" for="loginCode">Code d'acc&egrave;s</label>
+        <input type="password" id="loginCode" placeholder="code d'acc&egrave;s" autocomplete="current-password">
+        <button class="btn btn-primary" id="loginBtn">Entrer</button>
+        <p class="hint" id="loginErr" style="color:var(--debit); display:none; margin-top:10px;">Email ou code incorrect.</p>
+      </div>
+    </div>`;
+  const tryLogin = ()=>{
+    const em = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const cd = document.getElementById('loginCode').value;
+    if(em === ACCESS_EMAIL.toLowerCase() && cd === ACCESS_CODE){
+      localStorage.setItem(AUTH_KEY, '1');
+      location.reload();
+    } else {
+      document.getElementById('loginErr').style.display = 'block';
+    }
+  };
+  document.getElementById('loginBtn').onclick = tryLogin;
+  document.getElementById('loginCode').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+  document.getElementById('loginEmail').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('loginCode').focus(); });
+  setTimeout(()=>document.getElementById('loginEmail') && document.getElementById('loginEmail').focus(), 50);
+}
+
+async function init(){
+  if(!isAuthed()){ showLogin(); return; }
+  app.innerHTML = `<div class="empty">Chargement des donn&eacute;es partag&eacute;es...</div>`;
+  DATA = await loadData();
+  setActiveNav(CURRENT_PAGE);
+  try{ history.replaceState({page:CURRENT_PAGE}, '', ''); }catch(e){}
+  render();
+  startSyncPolling();
+}
+init();
+</script>
+<script>
+(function(){
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  }
+  var deferredPrompt = null;
+  function isStandalone(){ return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+  function showBanner(){
+    if(document.getElementById('pwaBanner') || isStandalone()) return;
+    try{ if(localStorage.getItem('pwa_dismissed')==='1') return; }catch(e){}
+    var b = document.createElement('div');
+    b.id = 'pwaBanner';
+    b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:88px;z-index:250;background:#1B2A4A;color:#F3F1EC;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.28);font-family:Helvetica Neue,Arial,sans-serif;font-size:0.9rem;';
+    b.innerHTML = '<img src="icon-192.png" alt="" style="width:34px;height:34px;border-radius:8px;flex:0 0 auto;"><span style="flex:1;line-height:1.25">Installer Lichka sur ton appareil</span><button id="pwaInstall" style="background:#B8892B;color:#1B2A4A;border:none;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer;">Installer</button><button id="pwaClose" aria-label="Fermer" style="background:none;border:none;color:#F3F1EC;font-size:1.25rem;cursor:pointer;line-height:1;">×</button>';
+    document.body.appendChild(b);
+    document.getElementById('pwaClose').onclick = function(){ b.remove(); try{ localStorage.setItem('pwa_dismissed','1'); }catch(e){} };
+    document.getElementById('pwaInstall').onclick = async function(){
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try{ await deferredPrompt.userChoice; }catch(e){}
+      deferredPrompt = null; b.remove();
+    };
+  }
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredPrompt = e;
+    setTimeout(showBanner, 1200);
+  });
+  window.addEventListener('appinstalled', function(){
+    var b=document.getElementById('pwaBanner'); if(b) b.remove();
+  });
+})();
+</script>
+</body>
+</html>
