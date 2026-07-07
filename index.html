@@ -1778,8 +1778,20 @@ function renderParametres(){
 
     <div class="card settings-group">
       <h3>Compte</h3>
-      <p class="hint">Connecté en tant que <strong>${escHtml(ACCESS_EMAIL)}</strong>.</p>
+      <p class="hint">Connecté en tant que <strong>${escHtml(DATA.auth.email)}</strong>.</p>
       <button class="btn btn-ghost btn-small" id="logoutBtn">Se déconnecter</button>
+    </div>
+
+    <div class="card settings-group">
+      <h3>Mot de passe / accès</h3>
+      <p class="hint">Modifie l'email et le mot de passe de connexion. Ils sont valables sur tous les appareils.</p>
+      <label class="field-label" for="authEmail">Email</label>
+      <input type="email" id="authEmail" value="${escAttr(DATA.auth.email)}" autocomplete="off">
+      <label class="field-label" for="authPass">Nouveau mot de passe</label>
+      <input type="password" id="authPass" placeholder="laisser vide pour ne pas changer" autocomplete="new-password">
+      <label class="field-label" for="authPass2">Confirmer le mot de passe</label>
+      <input type="password" id="authPass2" placeholder="confirmer" autocomplete="new-password">
+      <button class="btn btn-primary" id="saveAuthBtn" style="margin-top:10px;">Enregistrer</button>
     </div>
 
     <div class="card settings-group">
@@ -1832,6 +1844,26 @@ function renderParametres(){
         localStorage.removeItem(AUTH_KEY);
         location.reload();
       }
+    };
+  }
+  const saveAuthBtn = document.getElementById('saveAuthBtn');
+  if(saveAuthBtn){
+    saveAuthBtn.onclick = ()=>{
+      const em = document.getElementById('authEmail').value.trim();
+      const p1 = document.getElementById('authPass').value;
+      const p2 = document.getElementById('authPass2').value;
+      if(!em){ toast('\u26a0 Email requis'); return; }
+      if(!DATA.auth || typeof DATA.auth!=='object') DATA.auth = {};
+      if(p1 || p2){
+        if(p1 !== p2){ toast('\u26a0 Les mots de passe ne correspondent pas'); return; }
+        if(p1.length < 4){ toast('\u26a0 Mot de passe trop court (min. 4 caractères)'); return; }
+        DATA.auth.password = p1;
+      }
+      DATA.auth.email = em;
+      saveData(DATA);
+      document.getElementById('authPass').value = '';
+      document.getElementById('authPass2').value = '';
+      toast('Identifiants mis à jour \u2713');
     };
   }
 
