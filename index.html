@@ -246,6 +246,14 @@ tr.row-highlight{ animation: rowflash 1.6s ease 2; }
 .drag-handle:active{ cursor:grabbing; }
 .tsc-body{ flex:1; display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .theme-stat-card.dragging{ opacity:.55; background:var(--paper-dark); }
+@media (max-width:640px){
+  .theme-stat-card{ padding:9px 12px; margin-bottom:6px; }
+  .sc-head{ gap:8px; }
+  .tsc-body{ flex-direction:column; align-items:stretch; gap:2px; }
+  .theme-stat-card .name{ font-size:0.95rem; }
+  .theme-stat-card .nums{ display:flex; gap:14px; text-align:left; align-items:baseline; font-size:0.8rem; white-space:nowrap; }
+  .theme-stat-card .nums > div:last-child{ margin-left:auto; }
+}
 .clearable{ position:relative; }
 .clearable input{ padding-right:38px; }
 .clear-x{ position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--ink-soft); font-size:1rem; padding:6px; display:none; }
@@ -454,7 +462,9 @@ async function loadData(){
   return fresh;
 }
 
+let LAST_SAVE_TS = 0;
 async function saveData(d){
+  LAST_SAVE_TS = Date.now();
   try{ localStorage.setItem(LOCAL_FALLBACK_KEY, JSON.stringify(d)); }catch(e){}
   if(SYNC_MODE === 'sheet' && getWebAppUrl()){
     setSyncStatus('syncing');
@@ -496,6 +506,7 @@ function startSyncPolling(){
   if(_pollTimer) clearInterval(_pollTimer);
   _pollTimer = setInterval(async ()=>{
     if(isUserBusy()) return;
+    if(Date.now() - LAST_SAVE_TS < 15000) return;
     try{
       const json = await jsonp(getWebAppUrl() + '?action=load&code=' + encodeURIComponent(ACCESS_CODE));
       if(json && json.ok){
