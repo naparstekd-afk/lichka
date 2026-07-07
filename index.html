@@ -940,12 +940,12 @@ function openHistEdit(id){
     </div>
     <label class="field-label" for="ehDate">Date</label>
     <input type="date" id="ehDate" value="${op.date}">
-    <label class="field-label" for="ehTheme">Thème</label>
-    <input type="text" id="ehTheme" list="ehThemeList" value="${escAttr(op.theme)}">
-    <datalist id="ehThemeList">${themeOpts.map(t=>`<option value="${escAttr(t)}"></option>`).join('')}</datalist>
     <label class="field-label" for="ehCompte">Compte</label>
     <input type="text" id="ehCompte" list="ehCompteList" value="${escAttr(op.compte||'')}">
     <datalist id="ehCompteList">${(DATA.comptes||[]).map(c=>`<option value="${escAttr(c)}"></option>`).join('')}</datalist>
+    <label class="field-label" for="ehTheme">Thème</label>
+    <input type="text" id="ehTheme" list="ehThemeList" value="${escAttr(op.theme)}">
+    <datalist id="ehThemeList">${themeOpts.map(t=>`<option value="${escAttr(t)}"></option>`).join('')}</datalist>
     <label class="field-label" for="ehSub">Sous-catégorie</label>
     <input type="text" id="ehSub" value="${escAttr(op.subcat)}">
     <label class="field-label" for="ehDesc">Description</label>
@@ -1011,7 +1011,7 @@ function filterByDate(ops, mode){
 }
 
 let THEME_DRAG_TS = 0;
-function enableThemeDragSort(container){
+function enableThemeDragSort(container, onReorder){
   if(!container) return;
   let dragging=null;
   container.querySelectorAll('.theme-stat-card').forEach(card=>{
@@ -1039,9 +1039,9 @@ function enableThemeDragSort(container){
         if(dragging) dragging.classList.remove('dragging');
         if(moved){
           THEME_DRAG_TS = Date.now();
-          const order = Array.prototype.slice.call(container.querySelectorAll('.theme-stat-card')).map(c=>c.dataset.theme);
-          DATA.themeOrder = order;
-          saveData(DATA);
+          const order = Array.prototype.slice.call(container.querySelectorAll('.theme-stat-card')).map(function(c){ return c.dataset.theme || c.dataset.compte; });
+          if(typeof onReorder === 'function'){ onReorder(order); }
+          else { DATA.themeOrder = order; saveData(DATA); }
         }
         dragging=null;
       };
@@ -1113,31 +1113,42 @@ function renderStats(){
   function renderStatCard(mode, name, v){
     const key = mode+':'+name;
     const expanded = !!statsExpanded[key];
-    const sub = subFor(mode, name);
-    const subKeys = Object.keys(sub).sort((a,b)=>a.localeCompare(b));
-    const subRows = subKeys.length ? subKeys.map(k=>{
-      const sv=sub[k]; const solde=sv.credit-sv.debit;
-      const k2 = key + '|' + k;
-      const exp2 = !!statsExpanded[k2];
-      const ss = subSubFor(mode, name, k);
-      const ssKeys = Object.keys(ss).sort((a,b)=>a.localeCompare(b));
-      const ssHtml = exp2 ? `<div class="sc-sub2">${ssKeys.length ? ssKeys.map(z=>{
-          const zv=ss[z]; const zs=zv.credit-zv.debit;
-          return `<div class="sc-sub-row sc-sub-row3" data-mode="${mode}" data-primary="${escAttr(name)}" data-secondary="${escAttr(k)}" data-third="${escAttr(z)}">
-            <span>${escHtml(z)}</span>
-            <span class="s-solde" style="color:${zs>=0?'var(--credit)':'var(--debit)'}">${fmtMoney(zs)}</span>
-          </div>`;
-        }).join('') : `<div class="hint" style="padding-left:40px;">—</div>`}</div>` : '';
-      return `<div class="sc-lvl2 ${exp2?'sc-open':''}">
-        <div class="sc-sub-row sc-sub-head" data-key2="${escAttr(k2)}">
-          <span>${escHtml(k)} <span class="sc-chev2">›</span></span>
-          <span class="s-solde" style="color:${solde>=0?'var(--credit)':'var(--debit)'}">${fmtMoney(solde)}</span>
-        </div>
-        ${ssHtml}
-      </div>`;
-    }).join('') : `<div class="hint" style="padding-left:22px;">—</div>`;
+    let subRows;
+    if(mode==='theme'){
+      const m = {};
+      themeOps.forEach(o=>{ if((o.theme||'(Sans thème)')===name){ const z=o.subcat||'(Sans sous-cat.)'; if(!m[z])m[z]={credit:0,debit:0}; if(o.type==='credit')m[z].credit+=Number(o.amount)||0; else m[z].debit+=Number(o.amount)||0; } });
+      const zk = Object.keys(m).sort((a,b)=>a.localeCompare(b));
+      subRows = zk.length ? zk.map(z=>{
+        const zv=m[z]; const zs=zv.credit-zv.debit;
+        return `<div class="sc-sub-row sc-leaf" data-theme="${escAttr(name)}" data-subcat="${escAttr(z)}"><span>${escHtml(z)}</span><span class="s-solde" style="color:${zs>=0?'var(--credit)':'var(--debit)'}">${fmtMoney(zs)}</span></div>`;
+      }).join('') : `<div class="hint" style="padding-left:22px;">—</div>`;
+    } else {
+      const sub = subFor(mode, name);
+      const subKeys = Object.keys(sub).sort((a,b)=>a.localeCompare(b));
+      subRows = subKeys.length ? subKeys.map(k=>{
+        const sv=sub[k]; const solde=sv.credit-sv.debit;
+        const k2 = key + '|' + k;
+        const exp2 = !!statsExpanded[k2];
+        const ss = subSubFor(mode, name, k);
+        const ssKeys = Object.keys(ss).sort((a,b)=>a.localeCompare(b));
+        const ssHtml = exp2 ? `<div class="sc-sub2">${ssKeys.length ? ssKeys.map(z=>{
+            const zv=ss[z]; const zs=zv.credit-zv.debit;
+            return `<div class="sc-sub-row sc-sub-row3" data-mode="${mode}" data-primary="${escAttr(name)}" data-secondary="${escAttr(k)}" data-third="${escAttr(z)}">
+              <span>${escHtml(z)}</span>
+              <span class="s-solde" style="color:${zs>=0?'var(--credit)':'var(--debit)'}">${fmtMoney(zs)}</span>
+            </div>`;
+          }).join('') : `<div class="hint" style="padding-left:40px;">—</div>`}</div>` : '';
+        return `<div class="sc-lvl2 ${exp2?'sc-open':''}">
+          <div class="sc-sub-row sc-sub-head" data-key2="${escAttr(k2)}">
+            <span>${escHtml(k)} <span class="sc-chev2">›</span></span>
+            <span class="s-solde" style="color:${solde>=0?'var(--credit)':'var(--debit)'}">${fmtMoney(solde)}</span>
+          </div>
+          ${ssHtml}
+        </div>`;
+      }).join('') : `<div class="hint" style="padding-left:22px;">—</div>`;
+    }
     const dataAttr = (mode==='theme') ? `data-theme="${escAttr(name)}"` : `data-compte="${escAttr(name)}"`;
-    const handle = (mode==='theme') ? `<span class="drag-handle" title="Glisser pour réordonner">⠿</span>` : '';
+    const handle = `<span class="drag-handle" title="Glisser pour réordonner">⠿</span>`;
     return `<div class="theme-stat-card ${expanded?'sc-open':''}" ${dataAttr} data-key="${escAttr(key)}">
       <div class="sc-head">
         ${handle}
@@ -1229,7 +1240,22 @@ function renderStats(){
       showCrossDetail(theme, compte, third);
     });
   });
-  if(statsGroupBy==='theme') enableThemeDragSort(document.getElementById('themeCards'));
+  document.querySelectorAll('.sc-leaf').forEach(row=>{
+    row.addEventListener('click', e=>{
+      e.stopPropagation();
+      showCrossDetail(row.dataset.theme, null, row.dataset.subcat);
+    });
+  });
+  if(statsGroupBy==='theme'){
+    enableThemeDragSort(document.getElementById('themeCards'));
+  } else {
+    enableThemeDragSort(document.getElementById('themeCards'), function(order){
+      const known = order.filter(function(x){ return (DATA.comptes||[]).indexOf(x) !== -1; });
+      const rest = (DATA.comptes||[]).filter(function(c){ return known.indexOf(c)===-1; });
+      DATA.comptes = known.concat(rest);
+      saveData(DATA);
+    });
+  }
   const grpT = document.getElementById('grpTheme');
   if(grpT) grpT.onclick = ()=>{ statsGroupBy='theme'; renderStats(); };
   const grpC = document.getElementById('grpCompte');
@@ -1300,8 +1326,8 @@ function showOperationDetail(op){
       <div class="stat-box ${op.type}"><div class="v">${fmtMoney(op.amount)}</div><div class="l">${op.type==='credit'?'Crédit':'Débit'}</div></div>
       <div class="stat-box solde"><div class="v" style="font-size:1.1rem;">${fmtDate(op.date)}</div><div class="l">Date</div></div>
     </div>
-    <div class="kv-row"><div class="lbl"><strong>Thème</strong></div><div>${escHtml(op.theme)||'—'}</div></div>
     <div class="kv-row"><div class="lbl"><strong>Compte</strong></div><div>${escHtml(op.compte)||'—'}</div></div>
+    <div class="kv-row"><div class="lbl"><strong>Thème</strong></div><div>${escHtml(op.theme)||'—'}</div></div>
     <div class="kv-row"><div class="lbl"><strong>Sous-catégorie</strong></div><div>${escHtml(op.subcat)||'—'}</div></div>
     <div class="kv-row"><div class="lbl"><strong>Description</strong></div><div>${escHtml(op.desc)||'—'}</div></div>
     <div class="modal-actions">
@@ -1391,11 +1417,14 @@ function showCompteDetail(compte){
 }
 
 function showCrossDetail(theme, compte, subcat){
-  let ops = DATA.operations.filter(o=> (o.theme||'(Sans thème)')===theme && (o.compte||'(Sans compte)')===compte);
+  let ops = DATA.operations.slice();
+  if(theme!==undefined && theme!==null) ops = ops.filter(o=> (o.theme||'(Sans thème)')===theme);
+  if(compte!==undefined && compte!==null) ops = ops.filter(o=> (o.compte||'(Sans compte)')===compte);
   if(subcat!==undefined && subcat!==null) ops = ops.filter(o=> (o.subcat||'(Sans sous-cat.)')===subcat);
   const t = computeTotals(ops);
+  const titre = [theme, compte, subcat].filter(function(x){ return x!==undefined && x!==null; }).map(function(x){ return escHtml(x); }).join(' · ');
   openModal(`
-    <h2>${escHtml(theme)} · ${escHtml(compte)}${(subcat!==undefined && subcat!==null) ? (' · '+escHtml(subcat)) : ''}</h2>
+    <h2>${titre}</h2>
     <div class="stat-grid">
       <div class="stat-box credit"><div class="v">${fmtMoney(t.credit)}</div><div class="l">Crédit</div></div>
       <div class="stat-box debit"><div class="v">${fmtMoney(t.debit)}</div><div class="l">Débit</div></div>
