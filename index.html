@@ -307,6 +307,18 @@ tr.row-highlight{ animation: rowflash 1.6s ease 2; }
 
 a.file-link{ display:inline-block; margin-top:6px; font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.85rem; color:var(--accent);}
 .hint{font-family:"Helvetica Neue",Arial,sans-serif; font-size:0.78rem; color:var(--ink-soft); margin-top:4px;}
+/* ===== Opération compacte (tout sur un écran, sans scroll) ===== */
+.op-title{ font-size:1.2rem; margin:2px 0 10px; padding-bottom:8px; }
+.op-card{ padding:12px; }
+.op-card .section-label{ margin-bottom:4px; font-size:0.66rem; letter-spacing:0.05em; }
+.op-card .type-toggle{ margin-bottom:9px; gap:8px; }
+.op-card .type-btn{ padding:11px; font-size:0.9rem; }
+.op-card .chip-row{ gap:6px; margin-bottom:8px; }
+.op-card .chip{ padding:6px 11px; font-size:0.82rem; }
+.op-card label.field-label{ margin:7px 0 4px; font-size:0.66rem; letter-spacing:0.04em; }
+.op-card input[type=text], .op-card input[type=number], .op-card input[type=date]{ padding:9px 10px; font-size:0.95rem; }
+.op-card .amount-input{ font-size:1.25rem; padding:10px; }
+.op-card .btn-primary{ margin-top:11px; padding:13px; font-size:1rem; }
 </style>
 </head>
 <body>
@@ -607,8 +619,8 @@ function renderNouvelle(){
   }
 
   app.innerHTML = `
-    <h1 class="page-title">Opération</h1>
-    <div class="card">
+    <h1 class="page-title op-title">Opération</h1>
+    <div class="card op-card">
       <div class="section-label">Type d'opération</div>
       <div class="type-toggle">
         <button class="type-btn credit ${formState.type==='credit'?'selected':''}" id="btnCredit">+ Crédit</button>
@@ -634,7 +646,7 @@ function renderNouvelle(){
         <button class="chip add-new" id="addSubcatChip">+ Autre</button>
       </div>` : ''}
 
-      <label class="field-label" for="descField">Champ libre — nom, description, commentaire...</label>
+      <label class="field-label" for="descField">Champ libre — description…</label>
       <input type="text" id="descField" placeholder="Ex : Sarah Cohen — achat de jeux" value="${escAttr(formState.desc)}">
 
       <label class="field-label" for="amountField">Montant</label>
