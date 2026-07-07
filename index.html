@@ -978,6 +978,7 @@ let statsThemeMode = 'month'; // 'month' | 'all'
 let statsThemeMonth = null;
 let statsGroupBy = 'theme'; // 'theme' | 'compte'
 let statsExpanded = {}; // cartes dépliées (croisement thème/compte)
+let PARAM_COMPTE_EXP = {}; // comptes dépliés dans Paramètres
 
 function computeTotals(ops){
   let credit=0, debit=0;
@@ -1733,6 +1734,13 @@ function renderParametres(){
     </div>
 
     <div class="card settings-group">
+      <h3>Comptes</h3>
+      <p class="hint">Ajoute ou supprime un compte, et clique dessus pour voir ses thèmes (crédit / débit).</p>
+      <div id="comptesList"></div>
+      <button class="btn btn-ghost btn-small" id="addCompteBtn" style="margin-top:8px;">+ Ajouter un compte</button>
+    </div>
+
+    <div class="card settings-group">
       <h3>Exportation</h3>
       <p class="hint">Exportez toutes les opérations au format CSV (compatible Excel).</p>
       <button class="btn btn-ghost" id="exportCsvBtn">⬇ Exporter en CSV</button>
@@ -1779,6 +1787,15 @@ function renderParametres(){
       if(!DATA.themes[val]) DATA.themes[val]={credit:[],debit:[]};
       saveData(DATA);
       renderParametres();
+    });
+  };
+  renderComptesList();
+  document.getElementById('addCompteBtn').onclick = ()=>{
+    promptText('Nouveau compte', 'Nom du compte', val=>{
+      if(!val) return;
+      if(!DATA.comptes.includes(val)) DATA.comptes.push(val);
+      saveData(DATA);
+      renderComptesList();
     });
   };
   document.getElementById('exportCsvBtn').onclick = exportCsv;
@@ -1856,6 +1873,56 @@ function renderThemesList(){
         saveData(DATA);
         renderParametres();
       });
+    };
+  });
+}
+
+function renderComptesList(){
+  const box = document.getElementById('comptesList');
+  if(!box) return;
+  const comptes = DATA.comptes || [];
+  if(!comptes.length){ box.innerHTML = `<div class="empty">Aucun compte.</div>`; return; }
+  box.innerHTML = comptes.map(name=>{
+    const m = {};
+    DATA.operations.forEach(o=>{
+      if((o.compte||'(Sans compte)')===name){
+        const t = o.theme||'(Sans thème)';
+        if(!m[t]) m[t]={credit:0,debit:0};
+        if(o.type==='credit') m[t].credit+=Number(o.amount)||0; else m[t].debit+=Number(o.amount)||0;
+      }
+    });
+    const tkeys = Object.keys(m).sort((a,b)=>a.localeCompare(b));
+    const rows = tkeys.length ? tkeys.map(t=>{
+      const v=m[t];
+      return `<div class="sc-sub-row"><span>${escHtml(t)}</span><span style="white-space:nowrap"><span style="color:var(--credit)">${fmtMoney(v.credit)}</span> · <span style="color:var(--debit)">${fmtMoney(v.debit)}</span></span></div>`;
+    }).join('') : `<div class="hint" style="padding-left:22px;">Aucune opération.</div>`;
+    const exp = !!PARAM_COMPTE_EXP[name];
+    return `<div class="theme-stat-card ${exp?'sc-open':''}" data-cpt="${escAttr(name)}" style="margin-bottom:8px;">
+      <div class="sc-head">
+        <div class="tsc-body"><div class="name">${escHtml(name)}</div></div>
+        <button class="icon-btn" data-delcpt="${escAttr(name)}" title="Supprimer le compte">✕</button>
+        <span class="sc-chev">›</span>
+      </div>
+      ${exp ? `<div class="sc-sub">${rows}</div>` : ''}
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.theme-stat-card[data-cpt]').forEach(card=>{
+    const head = card.querySelector('.sc-head');
+    if(head) head.addEventListener('click', e=>{
+      if(e.target.closest('[data-delcpt]')) return;
+      const n = card.dataset.cpt;
+      PARAM_COMPTE_EXP[n] = !PARAM_COMPTE_EXP[n];
+      renderComptesList();
+    });
+  });
+  box.querySelectorAll('[data-delcpt]').forEach(b=>{
+    b.onclick = ()=>{
+      const n = b.dataset.delcpt;
+      if(confirm('Supprimer le compte "'+n+'" ? Les opérations déjà enregistrées seront conservées avec ce nom.')){
+        DATA.comptes = DATA.comptes.filter(c=>c!==n);
+        saveData(DATA);
+        renderComptesList();
+      }
     };
   });
 }
