@@ -509,6 +509,9 @@ function startSyncPolling(){
     if(Date.now() - LAST_SAVE_TS < 15000) return;
     try{
       const json = await jsonp(getWebAppUrl() + '?action=load&code=' + encodeURIComponent(ACCESS_CODE));
+      // Une sauvegarde locale a pu se produire pendant que cette requête était en vol :
+      // dans ce cas on ignore la réponse (potentiellement périmée) pour ne pas écraser le changement.
+      if(Date.now() - LAST_SAVE_TS < 15000) return;
       if(json && json.ok){
         const fresh = normalizeData(json.payload ? JSON.parse(json.payload) : defaultData());
         if(JSON.stringify(fresh) !== JSON.stringify(DATA)){
