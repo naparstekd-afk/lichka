@@ -392,6 +392,7 @@ function defaultData(){
     themes: JSON.parse(JSON.stringify(DEFAULT_THEMES)),
     operations: [], // {id, date, type, compte, theme, subcat, desc, amount}
     comptes: ["Beth Habad","Hazak","Famille"],
+    auth: { email: "naparstekd@gmail.com", password: "Hazak123." },
     forecast: { months:{} } // prévisionnel : { "YYYY-MM": { theme: montant } }
   };
 }
@@ -402,6 +403,9 @@ function normalizeData(p){
   if(!p.themes) p.themes = JSON.parse(JSON.stringify(DEFAULT_THEMES));
   if(!p.operations) p.operations = [];
   if(!Array.isArray(p.comptes) || !p.comptes.length) p.comptes = ["Beth Habad","Hazak","Famille"];
+  if(!p.auth || typeof p.auth!=='object') p.auth = {};
+  if(typeof p.auth.email!=='string' || !p.auth.email) p.auth.email = 'naparstekd@gmail.com';
+  if(typeof p.auth.password!=='string' || !p.auth.password) p.auth.password = 'Hazak123.';
   if(!p.forecast) p.forecast = { months:{} };
   if(!p.forecast.months || typeof p.forecast.months!=='object') p.forecast.months = {};
   Object.keys(p.forecast.months).forEach(function(mk){
@@ -1762,6 +1766,7 @@ function openAddPrevModal(mk){
 
 /* ============ PAGE: PARAMÈTRES ============ */
 function renderParametres(){
+  if(!DATA.auth || typeof DATA.auth!=='object') DATA.auth = { email:'naparstekd@gmail.com', password:'Hazak123.' };
   app.innerHTML = `
     <h1 class="page-title">Paramètres</h1>
 
@@ -2133,7 +2138,8 @@ function showLogin(){
   const tryLogin = ()=>{
     const em = document.getElementById('loginEmail').value.trim().toLowerCase();
     const cd = document.getElementById('loginCode').value;
-    if(em === ACCESS_EMAIL.toLowerCase() && cd === ACCESS_CODE){
+    const a = (DATA && DATA.auth) ? DATA.auth : { email:'naparstekd@gmail.com', password:'Hazak123.' };
+    if(em === (a.email||'').toLowerCase() && cd === a.password){
       localStorage.setItem(AUTH_KEY, '1');
       location.reload();
     } else {
@@ -2147,9 +2153,9 @@ function showLogin(){
 }
 
 async function init(){
-  if(!isAuthed()){ showLogin(); return; }
   app.innerHTML = `<div class="empty">Chargement des donn&eacute;es partag&eacute;es...</div>`;
   DATA = await loadData();
+  if(!isAuthed()){ showLogin(); return; }
   setActiveNav(CURRENT_PAGE);
   try{ history.replaceState({page:CURRENT_PAGE}, '', ''); }catch(e){}
   render();
