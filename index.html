@@ -1549,7 +1549,7 @@ const PREV_DEFAULT_THEMES = ["Club Cacher","Talmud Torah"];
 let PREV_EXTRA_MONTHS = []; // mois ajoutés manuellement (session)
 let PREV_SUMMARY_MONTH = null; // mois du carré "Solde prévu fin" (navigable)
 let PREV_SUMMARY_MONTH2 = null; // mois du carré "Prévu sans crédits"
-let PREV_OPEN_MONTH = null;     // mois ouvert (accordéon)
+let PREV_OPEN_MONTHS = {};      // mois ouverts (plusieurs possibles)
 let PREV_INIT = false;
 
 function curMonthKey(){ return todayISO().slice(0,7); }
@@ -1622,7 +1622,7 @@ function projectedEndNoCredits(mk){
 }
 
 function renderPrevisionnel(){
-  if(!PREV_INIT){ PREV_OPEN_MONTH = curMonthKey(); PREV_INIT = true; }
+  if(!PREV_INIT){ PREV_OPEN_MONTHS[curMonthKey()] = true; PREV_INIT = true; }
   if(!PREV_SUMMARY_MONTH) PREV_SUMMARY_MONTH = curMonthKey();
   if(!PREV_SUMMARY_MONTH2) PREV_SUMMARY_MONTH2 = curMonthKey();
   const sm = PREV_SUMMARY_MONTH;
@@ -1631,7 +1631,7 @@ function renderPrevisionnel(){
   const realSolde = globalSolde();
 
   const cards = months.map(mk=>{
-    const opened = (mk===PREV_OPEN_MONTH);
+    const opened = !!PREV_OPEN_MONTHS[mk];
     const end = projectedEnd(mk);
     const net = monthCreditTotal(mk) - monthDebitTotal(mk);
     let body = '';
@@ -1712,7 +1712,7 @@ function renderPrevisionnel(){
   app.querySelectorAll('.pv-acc-head[data-toggle]').forEach(h=>{
     h.onclick = ()=>{
       const mk=h.dataset.toggle;
-      PREV_OPEN_MONTH = (PREV_OPEN_MONTH===mk) ? null : mk;
+      if(PREV_OPEN_MONTHS[mk]) delete PREV_OPEN_MONTHS[mk]; else PREV_OPEN_MONTHS[mk] = true;
       renderPrevisionnel();
     };
   });
@@ -1735,7 +1735,7 @@ function renderPrevisionnel(){
     const ms = prevMonthsList(); const last = ms[ms.length-1] || curMonthKey();
     const nm = shiftMonth(last, 1);
     if(PREV_EXTRA_MONTHS.indexOf(nm)===-1) PREV_EXTRA_MONTHS.push(nm);
-    PREV_OPEN_MONTH = nm;
+    PREV_OPEN_MONTHS[nm] = true;
     renderPrevisionnel();
   };
 }
