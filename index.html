@@ -1280,7 +1280,12 @@ function renderStats(){
       if(e.target.closest('.drag-handle')) return;
       if(Date.now() - THEME_DRAG_TS < 300) return;
       const k = card.dataset.key;
-      statsExpanded[k] = !statsExpanded[k];
+      const wasOpen = !!statsExpanded[k];
+      // Accordéon : une seule rubrique ouverte à la fois.
+      // On ferme toutes les autres rubriques de 1er niveau (clés sans "|"),
+      // sans toucher aux sous-rubriques (clés contenant "|").
+      Object.keys(statsExpanded).forEach(key=>{ if(key.indexOf('|')===-1) statsExpanded[key]=false; });
+      statsExpanded[k] = !wasOpen;
       renderStats();
     });
   });
