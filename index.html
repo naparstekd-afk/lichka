@@ -244,6 +244,8 @@ tr.row-highlight{ animation: rowflash 1.6s ease 2; }
 .pv-month-label{ min-width:120px; text-align:center; display:inline-block; }
 .drag-handle{ cursor:grab; color:var(--ink-soft); font-size:1.15rem; line-height:1; touch-action:none; user-select:none; padding:2px 6px 2px 0; flex:0 0 auto; }
 .drag-handle:active{ cursor:grabbing; }
+th.sortable{ cursor:pointer; user-select:none; white-space:nowrap; }
+th.sortable:hover{ color:var(--accent); }
 .tsc-body{ flex:1; display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .theme-stat-card.dragging{ opacity:.55; background:var(--paper-dark); }
 @media (max-width:640px){
@@ -781,15 +783,26 @@ let historySearch = '';
 let histThemeFilter = '';
 let histDateFrom = '';
 let histDateTo = '';
+let histSortKey = 'date';   // date|amount|type|compte|theme|subcat|desc
+let histSortDir = 'desc';   // asc|desc
+function histCompareOps(a,b){
+  const k = histSortKey; let cmp;
+  if(k==='amount'){ cmp = (Number(a.amount)||0) - (Number(b.amount)||0); }
+  else if(k==='date'){ cmp = String(a.date||'').localeCompare(String(b.date||'')); }
+  else { cmp = String(a[k]||'').toLowerCase().localeCompare(String(b[k]||'').toLowerCase()); }
+  if(cmp===0) cmp = String(a.date||'').localeCompare(String(b.date||''));
+  return histSortDir==='asc' ? cmp : -cmp;
+}
 let pendingHighlightId = null;
 
 function renderHistorique(){
   const isFiltering = !!(historySearch || histThemeFilter || histDateFrom || histDateTo);
   const ops = DATA.operations
     .slice()
-    .sort((a,b)=> b.date.localeCompare(a.date))
     .filter(matchesSearch)
-    .filter(matchesHistFilters);
+    .filter(matchesHistFilters)
+    .sort(histCompareOps);
+  const sortArrow = (k)=> histSortKey===k ? (histSortDir==='asc'?' ▲':' ▼') : '';
 
   const histTotals = computeTotals(ops);
   const opThemes = Array.from(new Set(DATA.operations.map(o=>o.theme||''))).filter(t=>t!=='').sort();
@@ -807,6 +820,16 @@ function renderHistorique(){
       </select>
       <input type="date" id="histFrom" value="${histDateFrom}" aria-label="Date de début">
       <input type="date" id="histTo" value="${histDateTo}" aria-label="Date de fin">
+      <select id="histSort" aria-label="Trier par">
+        <option value="date" ${histSortKey==='date'?'selected':''}>Tri : Date</option>
+        <option value="amount" ${histSortKey==='amount'?'selected':''}>Tri : Montant</option>
+        <option value="type" ${histSortKey==='type'?'selected':''}>Tri : Type</option>
+        <option value="compte" ${histSortKey==='compte'?'selected':''}>Tri : Compte</option>
+        <option value="theme" ${histSortKey==='theme'?'selected':''}>Tri : Thème</option>
+        <option value="subcat" ${histSortKey==='subcat'?'selected':''}>Tri : Sous-cat.</option>
+        <option value="desc" ${histSortKey==='desc'?'selected':''}>Tri : Description</option>
+      </select>
+      <button class="btn btn-ghost btn-small" id="histSortDir" style="flex:0 0 auto;" title="Sens du tri">${histSortDir==='asc'?'↑ Croissant':'↓ Décroissant'}</button>
       ${isFiltering ? `<button class="btn btn-ghost btn-small" id="histResetFilters" style="flex:0 0 auto;">Réinitialiser</button>` : ''}
     </div>
     ${isFiltering ? `<div class="search-summary">
@@ -820,7 +843,14 @@ function renderHistorique(){
       <datalist id="histCompteList">${(DATA.comptes||[]).map(c=>`<option value="${escAttr(c)}"></option>`).join('')}</datalist>
       <table>
         <thead><tr>
-          <th>Date</th><th>Type</th><th>Compte</th><th>Thème</th><th>Sous-cat.</th><th>Description</th><th>Montant</th><th></th>
+          <th class="sortable" data-sort="date">Date${sortArrow('date')}</th>
+          <th class="sortable" data-sort="type">Type${sortArrow('type')}</th>
+          <th class="sortable" data-sort="compte">Compte${sortArrow('compte')}</th>
+          <th class="sortable" data-sort="theme">Thème${sortArrow('theme')}</th>
+          <th class="sortable" data-sort="subcat">Sous-cat.${sortArrow('subcat')}</th>
+          <th class="sortable" data-sort="desc">Description${sortArrow('desc')}</th>
+          <th class="sortable" data-sort="amount">Montant${sortArrow('amount')}</th>
+          <th></th>
         </tr></thead>
         <tbody id="histBody">
           ${ops.map(op=>rowHtml(op)).join('')}
@@ -849,6 +879,18 @@ function renderHistorique(){
   if(hTo) hTo.onchange = e=>{ histDateTo = e.target.value; renderHistorique(); };
   const hReset = document.getElementById('histResetFilters');
   if(hReset) hReset.onclick = ()=>{ histThemeFilter=''; histDateFrom=''; histDateTo=''; historySearch=''; renderHistorique(); };
+  const hSort = document.getElementById('histSort');
+  if(hSort) hSort.onchange = e=>{ histSortKey = e.target.value; renderHistorique(); };
+  const hSortDir = document.getElementById('histSortDir');
+  if(hSortDir) hSortDir.onclick = ()=>{ histSortDir = (histSortDir==='asc'?'desc':'asc'); renderHistorique(); };
+  document.querySelectorAll('th.sortable').forEach(th=>{
+    th.onclick = ()=>{
+      const k = th.dataset.sort;
+      if(histSortKey===k){ histSortDir = (histSortDir==='asc'?'desc':'asc'); }
+      else { histSortKey = k; histSortDir = (k==='date'||k==='amount') ? 'desc' : 'asc'; }
+      renderHistorique();
+    };
+  });
 
   const body = document.getElementById('histBody');
   if(body){
