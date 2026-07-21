@@ -293,6 +293,20 @@ th.sortable:hover{ color:var(--accent); }
 .pv-acc-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; }
 .pv-chev{ color:var(--ink-soft); font-size:1.3rem; line-height:1; transition:transform .15s; display:inline-block; }
 .pv-month-card.pv-open .pv-chev{ transform:rotate(90deg); }
+/* --- Prévisionnel : version compacte --- */
+.pv-page .page-title{ font-size:1.2rem; margin:2px 0 10px; padding-bottom:7px; }
+.pv-page .stat-grid{ gap:7px; margin-bottom:10px; }
+.pv-page .stat-box{ padding:9px 8px; }
+.pv-page .stat-box .v{ font-size:1.15rem; }
+.pv-page .stat-box .l{ font-size:0.62rem; margin-top:2px; }
+.pv-page .pv-arrow{ width:22px; height:22px; font-size:1rem; }
+.pv-page .hint{ font-size:0.72rem; margin-bottom:8px !important; }
+.pv-page .pv-month-card{ padding:9px 13px; margin-bottom:7px; box-shadow:none; }
+.pv-page .pv-month-title{ font-size:0.95rem; }
+.pv-page .pv-month-end{ font-size:0.78rem; }
+.pv-page .pv-body{ margin-top:8px; padding-top:8px; }
+.pv-page .pv-body table.resp th, .pv-page .pv-body table.resp td{ padding:5px 6px; font-size:0.8rem; }
+.pv-page .pv-month-net{ margin:6px 0 3px; font-size:0.8rem; }
 .pv-body{ margin-top:12px; border-top:1px solid var(--line); padding-top:12px; }
 
 .toast{
@@ -1678,6 +1692,7 @@ function renderPrevisionnel(){
   }).join('');
 
   app.innerHTML = `
+    <div class="pv-page">
     <h1 class="page-title">Prévisionnel</h1>
 
     <div class="stat-grid">
@@ -1707,6 +1722,7 @@ function renderPrevisionnel(){
     ${cards}
 
     <button class="btn btn-ghost btn-small" id="pvAddMonth" style="margin-top:4px;">+ Ajouter un mois</button>
+    </div>
   `;
 
   document.getElementById('pvPrev').onclick = ()=>{ PREV_SUMMARY_MONTH = shiftMonth(sm,-1); renderPrevisionnel(); };
